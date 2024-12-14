@@ -1,46 +1,16 @@
 <html>
     <head>
-        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/css/bootstrap.min.css" integrity="sha384-xOolHFLEh07PJGoPkLv1IbcEPTNtaed2xpHsD9ESMhqIYd0nLMwNLD69Npy4HI+N" crossorigin="anonymous">
-    </head>
-    <body>
-        <main id="test"></main>
         <script type="module">
-         import { Morph, NowMorph, SumMorph } from '/morphic.mjs';
+         import { HTMLDocumentBodyMorph, HTMLElementMorph } from '/morphic.mjs';
 
-         const container = document.getElementById('test');
+         const body = new HTMLDocumentBodyMorph()
+         body.createElement('a', { href: '#' })
+             .withText("Hey!")
+             .observeEventWith('click', { update(morph, event) { console.log('clicked', morph.toString(), event) } });
 
-         Morph.of(null).render(container);
-         Morph.of(undefined).render(container);
-         Morph.of(true).render(container);
-         Morph.of(false).render(container);
-         Morph.of(1).render(container);
-         Morph.of("Delon").render(container);
-
-         Morph.of([]).render(container);
-         Morph.of({}).render(container);
-         Morph.of([null]).render(container);
-
-         Morph.of([1, 3, 4]).render(container);
-         Morph.of([{ a: 1, b: true }, { a: 3, b: false }, { a: 4, b: false }]).render(container);
-
-         // new NowMorph().render(container);
-         //
-         // const morphs = [1, 2, 3, 5].map((x) => Morph.of(x));
-         // morphs.forEach((morph) => { morph.render(container) });
-         // new SumMorph(morphs).render(container);
-
-         // const numbers = [1, 2, 3, 5].map((x) => Morph.of(x));
-         // numbers.forEach((number) => { number.render(container) })
-         // const sum = new SumMorph(numbers);
-         // sum.render(container);
-
-         // const table = Morph.of([...numbers, sum]);
-         // table.render(container);
-
-         // const number = Morph.of(340)
-         // number.render(container);
+         body.createElement('p').createElement('strong').withText("Delon!");
+         body.draw();
+         console.log(body)
         </script>
-        <script src="https://cdn.jsdelivr.net/npm/jquery@3.5.1/dist/jquery.slim.min.js" integrity="sha384-DfXdz2htPH0lsSSs5nCTpuj/zy4C+OGpamoFVy38MVBnE+IbbVYUew+OrCXaRkfj" crossorigin="anonymous"></script>
-        <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-Fy6S3B9q64WdZWQUiU+q4/2Lc9npb8tCaSX9FK7E8HnRr0Jz8D6OP9dO5Vg3Q9ct" crossorigin="anonymous"></script>
-    </body>
+    </head>
 </html>

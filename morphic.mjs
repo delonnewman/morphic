@@ -1,70 +1,285 @@
-const basicPrinter = (value) => value.toString();
+const DENO_CUSTOM_INSPECT_SYMBOL = Symbol.for("Deno.customInspect");
+const NODE_CUSTOM_INSPECT_SYMBOL = Symbol.for('nodejs.util.inspect.custom');
 
-const PRINTERS = {
-  number: basicPrinter,
-  boolean: (value) => (value ? "Yes" : "No"),
-  string: (value) => `"${value}"`,
-  function: basicPrinter,
-  array: (value) => `[${value.map(print).join(", ")}]`,
-  object: (value) =>
-    `{${Object.entries(value)
-      .map(([name, value]) => `${name}: ${print(value)}`)
-      .join(", ")}}`,
-  date: basicPrinter,
+const EMPTY_ARRAY = Object.freeze([]);
+
+const Inspectable = {
+  // Inspecting
+  inspect() {
+    return this.toString();
+  },
+  [DENO_CUSTOM_INSPECT_SYMBOL]() { return this.toString() },
+  [NODE_CUSTOM_INSPECT_SYMBOL]() { return this.toString() },
 };
 
-export function print(object) {
-  if (object == null) return "-";
-  const type = typeof object;
-  if (type === "object" && Array.isArray(object)) {
-    return PRINTERS.array(object);
-  } else if (object instanceof Date) {
-    return PRINTERS.date(object);
+class NotImplementedError extends Error {
+  constructor(methodName) {
+    this.name = 'NotImplementedError';
+    this.message = `${methodName} must be implemented by subclasses`;
   }
-  return PRINTERS[type](object);
 }
 
-export class World {
-  constructor(container) {
-    this.container = container;
-    this.children = [];
-  }
+const Hashable = {
+  hashCode() {
+    throw new NotImplementedError('hashCode');
+  },
 
-  add(morph) {
-    this.children.push(morph);
-    this.render();
-  }
+  isEqual(other) {
+    if (typeof other.hashCode !== 'function') {
+      return false;
+    }
 
-  render() {}
+    return this.hashCode() === other.hashCode();
+  },
+};
+
+const Equatable = {
+  isIdentical(other) {
+    return this === other;
+  },
+
+  isEqual(other) {
+    return this.isIdentical(other);
+  },
+
+  isEquivalent(other) {
+    return this.isIdentical(other);
+  },
+
+  isNotIdentical(other) { return !this.isIdentical(other) },
+  isNotEqual(other) { return !this.isEqual(other) },
+  isNotEquivalent(other) { return !this.isEquivalent(other) },
+};
+
+const Base = Object.assign({}, Inspectable, Equatable);
+
+// Core extensions
+Object.assign(Object.prototype, Equatable, {
+  isNil() { return false },
+  inspect() {
+    return `{${Object.entries(this)
+      .map(([name, value]) => `${name}: ${value.inspect()}`)
+      .join(", ")}}`
+  },
+});
+
+function hashCombine(seed, hash) {
+    // a la boost, a la clojure
+    seed ^= hash + 0x9e3779b9 + (seed << 6) + (seed >> 2)
+    return seed
+}
+
+const MORPH_HASH_CODE_SYMBOL = Symbol.for('#Morphic.cachedHashCode');
+
+Object.assign(Array.prototype, Equatable, Hashable, {
+  inspect() {
+    return `[${this.map((item) => item.inspect()).join(", ")}]`;
+  },
+  hashCode() {
+    if (!this[MORPHIC_HASH_CODE_SYMBOL]) {
+      this[MORPHIC_HASH_CODE_SYMBOL] = this.reduce((hash, item) => hashCombine(hash, item.hashCode()));
+    }
+
+    return this[MORPHIC_HASH_CODE_SYMBOL];
+  },
+  isEqual(other) {
+    if (!(other instanceof Array)) return false;
+
+    return this.hashCode() === other.hashCode();
+  }
+});
+
+Object.assign(Date.prototype, Equatable, Hashable, {
+  inspect() {
+    return this.toString();
+  },
+  hashCode() {
+    return this.valueOf();
+  },
+});
+
+Object.assign(RegExp.prototype, Equatable, Hashable, {
+  inspect() {
+    return this.toString();
+  }
+});
+
+Object.assign(Function.prototype, Equatable, {
+  inspect() {
+    return this.toString();
+  }
+});
+
+function booleanNumberCompare(boolean, number) {
+  return boolean ? number === 1 : number === 0;
+}
+
+Object.assign(Number.prototype, Equatable, Hashable, {
+  inspect() {
+    return this.toString();
+  },
+  hashCode() {
+    return this;
+  },
+  isEqual(other) {
+    return this === other;
+  },
+  isEquivalent(other) {
+    if (this.isEqual(other)) return true;
+
+    if (other == null) {
+      return this === 0;
+    }
+
+    const type = typeof other;
+    switch(type) {
+      case 'string':
+        return this.toString() === other;
+      case 'boolean':
+        return booleanNumberCompare(other, this);
+    }
+
+    return false;
+  },
+});
+
+function booleanStringCompare(boolean, string) {
+  const lower = string.toLowerCase()
+  return boolean
+    ? lower === 'yes' || lower === '1' || lower === 'true'
+    : lower === 'no' || lower === '0' || lower === 'false';
+}
+
+Object.assign(Boolean.prototype, Equatable, Hashable, {
+  inspect() {
+    return this ? "Yes" : "No";
+  },
+  hashCode() {
+    return this ? 1 : 0;
+  },
+  isEqual(other) {
+    return this === other;
+  },
+  isEquivalent(other) {
+    if (this.isEqual(other)) return true;
+
+    if (other == null) {
+      return this ? false : true;
+    }
+
+    const type = typeof other;
+    switch(type) {
+      case 'number':
+        return booleanNumberCompare(this, other);
+      case 'string':
+        return booleanStringCompare(this, other);
+    }
+
+    return false;
+  }
+});
+
+// A basic string hash
+function stringHash(str) {
+  let code = 0;
+  for (let i = 0; i < str.length; i++) {
+    for (let j = str.length; j > 0; j--) {
+      code += Math.pow(str.charCodeAt(i), j)
+    }
+  }
+  return code;
+}
+
+Object.assign(String.prototype, Equatable, Hashable, {
+  inspect() {
+    return `"${this}"`;
+  },
+  hashCode() {
+    return stringHash(this);
+  },
+  isEqual(other) {
+    if (typeof other !== 'string') return false;
+
+    return this === other;
+  },
+  isEquivalent(other) {
+    if (this === `${other}`) return true;
+
+    if (typeof other === 'boolean') {
+      return booleanStringCompare(other, this);
+    }
+
+    return false;
+  }
+});
+
+// A default Null object
+const NilBase = function(){};
+Object.assign(NilBase, Base);
+Object.assign(NilBase, {
+  inspect() { return '-' },
+  toString() { return 'nil' },
+  valueOf() { return undefined },
+  isNil() { return true },
+});
+
+const NilHandler = {
+  get(nil, property, receiver) {
+    if (Object.hasOwn(nil, property)) {
+      return Reflect.get(nil, property);
+    }
+
+    return Nil;
+  },
+  has(_target, _key) {
+    return true;
+  },
+  apply(_target, _this, _args) {
+    return Nil;
+  },
+}
+
+export const Nil = new Proxy(NilBase, NilHandler);
+
+// object coersion
+function objectOf(value) {
+  if (value == null) return Nil;
+
+  return value;
 }
 
 export class MorphFactory {
-  static registry = {};
-  static register(tag, constructor, { predicate, shouldCache }) {
-    this.registry[tag] = {
-      shouldCache,
+  static registry = [];
+  static register(constructor, predicate) {
+    this.registry.unshift({
       predicate,
       constructor,
-    };
+    });
   }
 
   buildFor(value) {
-    const registry = Object.entries(this.constructor.registry).reverse();
-    for (const [tag, { predicate, constructor, shouldCache }] of registry) {
+    const registry = this.constructor.registry;
+
+    for (const { predicate, constructor } of registry) {
       if (predicate(value)) {
         return new constructor(value);
       }
     }
 
-    throw new Error(`Don't know how to make a morph for ${print(value)}`);
+    throw new Error(`Don't know how to make a morph for ${value.inspect()}`);
   }
 }
 
-let CURRENT_MORPHIC_ID = 0;
+export const nextID = (() => {
+  let currentID = 0;
+  return () => {
+    return currentID++;
+  }
+})();
 
 export class Morph {
-  static nextID() {
-    return CURRENT_MORPHIC_ID++;
+  static {
+    Object.assign(this, Base);
   }
 
   static #factory = undefined;
@@ -77,42 +292,92 @@ export class Morph {
       return value;
     }
 
-    return this.factory().buildFor(value);
+    return this.factory().buildFor(objectOf(value));
   }
 
-  static valueOf(morph) {
-    if (morph instanceof Morph) {
-      return morph.value;
+  #morphId;
+  #parent;
+  #initialized;
+
+  constructor(parent) {
+    this.#morphId = nextID();
+    this.#parent = parent;
+    this.#initialized = false;
+  }
+
+  get parent() { return this.#parent; }
+  get morphId() { return this.#morphId; }
+
+  draw() {
+    if (!this.isInitialized()) {
+      this.initialize();
+      this.#initialized = true;
     }
-
-    return morph;
+    this.drawSelf();
+    this.children.forEach((child) => {
+        child.draw();
+    });
   }
 
+  get children() {
+    throw new NotImplementedError('children');
+  }
+
+  drawSelf() {
+    throw new NotImplementedError('drawSelf');
+  }
+
+  redraw(child) {
+    child.draw();
+  }
+
+  initialize() {}
+  isInitialized() {
+    return this.#initialized;
+  }
+
+  isIdentical(other) {
+    return this.morphId === other.morphId;
+  }
+
+  inspect() { return this.toString() }
+
+  toString() {
+    return `#<${this.constructor.name}:0x${this.hexId}>`;
+  }
+
+  get hexId() {
+    return `${this.morphId.toString(16).padStart(4, "0")}`;
+  }
+}
+
+export class NullMorph extends Morph {
+  constructor() {
+    super(Nil);
+  }
+
+  get element() { return Nil }
+  get children() { return EMPTY_ARRAY }
+  drawSelf() {  }
+}
+
+export class AtomicMorph extends Morph {
   #value;
+  #observers;
   #originalValue;
-  #renderedValue;
-  #children;
-  #morphic_id;
 
-  constructor(value) {
-    this.#morphic_id = this.constructor.nextID();
-    this.#value = value;
-    this.#originalValue = value;
-    this.#renderedValue = undefined;
-    this.#children = [];
-  }
-
-  add(...morphs) {
-    this.#children.push(...morphs);
-    return this;
-  }
-
-  get morphic_id() {
-    return this.#morphic_id;
+  constructor(parent, initialValue) {
+    super(parent);
+    this.#value = initialValue;
+    this.#observers = [];
   }
 
   valueOf() {
     return this.#value;
+  }
+
+  toString() {
+    return `#<${this.constructor.name}:0x${this.hexId} ${this.value.inspect()}>`;
   }
 
   get value() {
@@ -120,707 +385,176 @@ export class Morph {
   }
 
   set value(newValue) {
-    this.#value = newValue;
-    this.renderValue();
+    const object = objectOf(newValue)
+    if (this.#value.isNotEqual(object)) {
+      const oldValue = this.#value;
+      this.#value = object;
+      this.parent.redraw(this);
+      this.#observers.forEach((observer) => {
+        observer.update(this, oldValue);
+      });
+    }
   }
 
-  isRendered() {
-    return this.#value === this.#renderedValue;
-  }
-
-  renderSelf() {
-    if (!this.isSetup()) this.setup();
-    //if (!this.isRendered()) {
-    console.debug("rendering value");
-    this.renderValue();
-    //this.#renderedValue = this.#value;
-    console.log("renderedValue", this.#renderedValue, this.isRendered());
-    //}
-  }
-
-  resetValue() {
+  reset() {
     this.value = this.#originalValue;
+    return this;
   }
 
-  renderValue() {
-    console.debug("failed to runder value");
-    throw new Error(`should be implemented by subclass`);
+  observeWith(...observers) {
+    this.#observers.push(...observers);
+    return this;
   }
 
-  isSetup() {
-    return false;
-  }
-  setup() {}
-
-  get children() {
-    return this.#children;
-  }
-
-  isIdentical(other) {
-    return this.morphic_id === other.morphic_id;
-  }
-
-  isEqual(other) {
-    return this.isIdentical(other);
-  }
-
-  print() {
-    return print(this.value);
-  }
-
-  toString() {
-    return `#<${this.constructor.name}:0x${this.hex_id} ${this.print()}>`;
-  }
-
-  get element_id() {
-    return `morphic-${this.hex_id}`;
-  }
-
-  get hex_id() {
-    return `${this.morphic_id.toString(16).padStart(4, "0")}`;
+  swap(fn) {
+    this.value = fn(this.value);
+    return this;
   }
 }
 
-export class DOMMorph extends Morph {
-  #valueElement;
-  #containerElement;
+export class TextNodeMorph extends AtomicMorph {
+  #node;
 
-  constructor(value) {
-    super(value);
-    this.#valueElement = undefined;
-    this.#containerElement = undefined;
+  constructor(parent, text) {
+    super(parent, text);
   }
 
-  get element() {
-    return this.#valueElement;
+  get node() { return this.#node }
+  get children() { return EMPTY_ARRAY }
+
+  initialize() {
+    this.#node = document.createTextNode(this.value);
+    this.parent.element.append(this.#node);
   }
 
-  set element(value) {
-    this.#valueElement = value;
+  drawSelf() {
+    this.#node.innerText = this.value;
+  }
+}
+
+export class HTMLElementMorph extends Morph {
+  #tagName;
+  #attributes;
+  #children;
+  #eventObservers;
+  #element;
+
+  constructor(parent, tagName, attributes = {}, children = []) {
+    super(parent);
+    this.#tagName = tagName;
+    this.#attributes = Object.freeze({ ...attributes, id: this.elementId });
+    this.#children = [ ...children ];
+    this.#eventObservers = {};
   }
 
-  get containerElement() {
-    return this.#containerElement;
+  get tagName() { return this.#tagName }
+  get attributes() { return this.#attributes }
+  get children() { return this.#children }
+  get element() { return this.#element }
+  get node() { return this.element }
+
+  get elementId() {
+    return `morphic-${this.hexId}`;
   }
 
-  set containerElement(value) {
-    this.#containerElement = value;
-    if (
-      this.#containerElement instanceof HTMLElement &&
-      !this.#containerElement.hasAttribute("id")
-    ) {
-      this.#containerElement.setAttribute("id", this.element_id);
+  get events() { return Object.keys(this.#eventObservers) }
+
+  toString() {
+    return `#<${this.constructor.name}:0x${this.hexId} ${this.tagName} ${this.attributes.inspect()} ${this.children.inspect()}>`;
+  }
+
+  observeEventWith(event, ...observers) {
+    this.#eventObservers[event] ??= [];
+    this.#eventObservers[event].push(...observers);
+    if (this.isInitialized()) {
+      this.#enableObservers(event, observers);
     }
+    return this;
   }
 
-  render(parentElement) {
-    console.debug("render", this.toString());
-    if (!this.isSetup()) this.setup();
-    console.debug("rendering value");
-    this.renderValue();
-
-    this.children.forEach((child) => {
-      if (!child.isRendered()) {
-        child.render(this.containerElement);
-      }
-    });
-
-    this.renderContainer(parentElement);
+  createElement(tagName, attributes = {}, children = []) {
+    const morph = new HTMLElementMorph(this, tagName, attributes, children);
+    this.children.push(morph)
+    console.log(this.toString(), 'init', this.isInitialized());
+    if (this.isInitialized()) { this.parent.redraw(this) }
+    return morph;
   }
 
-  renderContainer(parentElement) {
-    const element = this.querySelector(`#${this.element_id}`);
-    if (element) {
-      console.log("replacing", element, this.toString());
-      parentElement.replaceChild(this.containerElement, element);
-    } else {
-      parentElement.append(this.containerElement);
-    }
+  withText(text = "") {
+    const morph = new TextNodeMorph(this, text);
+    this.children.push(morph);
+    if (this.isInitialized()) { this.parent.redraw(this) }
+    return this;
   }
 
-  renderValue() {
-    console.debug(`${this.toString()}.renderValue`, this.print(), this.element);
-    this.element.innerHTML = this.print();
+  withElement(...args) {
+    this.createElement(...args);
+    return this;
   }
 
-  isSetup() {
-    return (
-      this.containerElement !== undefined && this.valueElement !== undefined
-    );
+  dontFollowThrough() {
+    return this.tagName === 'a';
   }
 
-  setup() {
-    console.log("setting up");
-    const element = this.create();
-    this.containerElement = element;
-    this.element = element;
-  }
-
-  create() {
-    return document.createTextNode(print(this.value));
-  }
-
-  // Helper methods for subclasses
-
-  createElement(tagName, attributes) {
-    attributes = { ...attributes };
+  initialize() {
+    const attributes = { ...this.attributes };
     let classList = attributes.class ?? [];
     delete attributes.class;
     if (typeof classList === "string") classList = classList.split(" ");
 
-    const element = document.createElement(tagName);
+    const element = this.#element = document.createElement(this.tagName);
     element.classList.add(...classList);
     Object.entries(attributes).forEach(([name, value]) => {
       element.setAttribute(name, value);
     });
 
-    return element;
-  }
-
-  querySelector(selector) {
-    if (
-      this.containerElement === undefined ||
-      this.containerElement.querySelector === undefined
-    ) {
-      return;
-    }
-
-    return this.containerElement.querySelector(selector);
-  }
-}
-
-export class ActiveDOMMorph extends DOMMorph {
-  #prototype;
-
-  constructor(value, prototype) {
-    super(value);
-    this.#prototype = {
-      ...prototype,
-      reset: this.resetValue,
-    };
-  }
-
-  get buttonAttributes() {
-    return {
-      type: "button",
-      "data-toggle": "dropdown",
-      "aria-expanded": "false",
-      class: this.buttonClassList,
-    };
-  }
-
-  get buttonClassList() {
-    return ["btn", "btn-link", "dropdown-toggle", "btn-sm"];
-  }
-
-  get menuAttributes() {
-    return {
-      class: this.menuClassList,
-    };
-  }
-
-  get menuClassList() {
-    return ["dropdown-menu"];
-  }
-
-  get menuItemAttributes() {
-    return {
-      class: ["dropdown-item"],
-      href: "#",
-    };
-  }
-
-  setup() {
-    const container = document.createElement("div");
-    container.classList.add("btn-group");
-
-    this.element = this.createElement("button", this.buttonAttributes);
-    container.append(this.element);
-
-    const dropdown = this.createElement("div", this.menuAttributes);
-    Object.getOwnPropertyNames(this.#prototype).forEach((property) => {
-      this.renderAction(property, dropdown);
+    this.events.forEach((eventName) => {
+      const observers = this.#eventObservers[eventName];
+      this.#enableObservers(eventName, observers);
     });
-    container.append(dropdown);
 
-    this.containerElement = container;
+    this.parent.element.append(element);
   }
 
-  renderAction(action, menu) {
-    const link = this.createElement("a", this.menuItemAttributes);
-    link.innerText = action;
-    link.addEventListener("click", (e) => {
-      this.#prototype[action].call(this);
-      e.preventDefault();
-    });
-    menu.append(link);
-  }
-}
-
-export class NullishMorph extends ActiveDOMMorph {
-  static actions = {
-    set() {
-      this.value = prompt("Set value");
-    },
-  };
-
-  constructor(value) {
-    super(value, NullishMorph.actions);
+  draw() {
+    console.log('drawing', this.toString());
+    super.draw();
   }
 
-  toString() {
-    return `#<${this.constructor.name}:0x${this.hex_id}>`;
-  }
-}
-
-export class NullMorph extends NullishMorph {
-  constructor() {
-    super(null);
+  drawSelf() {
+    console.log('drawing self', this.toString());
   }
 
-  isEqual(other) {
-    return other instanceof NullMorph;
-  }
-}
-MorphFactory.register("null", NullMorph, {
-  predicate: (value) => value === null,
-});
-
-export class UndefinedMorph extends NullishMorph {
-  constructor() {
-    super(undefined);
-  }
-
-  isEqual(other) {
-    return other instanceof UndefinedMorph;
-  }
-}
-MorphFactory.register("undefined", UndefinedMorph, {
-  predicate: (value) => value === undefined,
-});
-
-export class BooleanMorph extends ActiveDOMMorph {
-  static actions = {
-    negate() {
-      this.value = !this.value.valueOf();
-    },
-  };
-
-  constructor(value) {
-    super(value, BooleanMorph.actions);
-  }
-
-  toString() {
-    return `#<${this.constructor.name}:0x${this.hex_id}>`;
-  }
-}
-
-export class FalseMorph extends BooleanMorph {
-  constructor() {
-    super(false);
-  }
-
-  isEqual(other) {
-    return other instanceof FalseMorph;
-  }
-}
-MorphFactory.register("false", FalseMorph, {
-  shouldCache: true,
-  predicate: (value) => value === false,
-});
-
-export class TrueMorph extends BooleanMorph {
-  constructor() {
-    super(true);
-  }
-
-  isEqual(other) {
-    return other instanceof TrueMorph;
-  }
-}
-MorphFactory.register("true", TrueMorph, {
-  shouldCache: true,
-  predicate: (value) => value === true,
-});
-
-export class NumberMorph extends ActiveDOMMorph {
-  static actions = {
-    ["+"]() {
-      const otherValue = parseInt(
-        prompt("Enter the number you'd like to add:"),
-        10
-      );
-      this.value = this.value + otherValue;
-    },
-    ["-"]() {
-      const otherValue = parseInt(
-        prompt("Enter the number you'd like to subtract:"),
-        10
-      );
-      this.value = this.value - otherValue;
-    },
-    ["*"]() {
-      const otherValue = parseInt(
-        prompt("Enter the number you'd like to multiply by:"),
-        10
-      );
-      this.value = this.value * otherValue;
-    },
-    ["/"]() {
-      const otherValue = parseInt(
-        prompt("Enter the number you'd like to divide by:"),
-        10
-      );
-      this.value = this.value / otherValue;
-    },
-    increment() {
-      this.value = this.value.valueOf() + 1;
-    },
-    decrement() {
-      this.value = this.value.valueOf() - 1;
-    },
-    set() {
-      this.value = parseInt(prompt("Set value"), 10);
-    },
-  };
-
-  constructor(value) {
-    super(value, NumberMorph.actions);
-  }
-
-  isEqual(other) {
-    return other instanceof NumberMorph && this.value === other.value;
-  }
-}
-MorphFactory.register("number", NumberMorph, {
-  predicate: (value) => typeof value === "number",
-});
-
-export class StringMorph extends ActiveDOMMorph {
-  static actions = {
-    toUpperCase() {
-      this.value = this.value.toUpperCase();
-    },
-    toLowerCase() {
-      this.value = this.value.toLowerCase();
-    },
-  };
-
-  constructor(value) {
-    super(value, StringMorph.actions);
-  }
-
-  isEqual(other) {
-    return other instanceof StringMorph && this.value === other.value;
-  }
-}
-MorphFactory.register("string", StringMorph, {
-  predicate: (value) => typeof value === "string",
-});
-
-export class ObjectEntryMorph extends DOMMorph {
-  #name;
-
-  constructor(name, value) {
-    super(value);
-    this.#name = name;
-    this.add(Morph.of(value));
-  }
-
-  render(parentElement) {
-    const row = document.createElement("tr");
-
-    const head = document.createElement("th");
-    head.innerText = this.#name;
-    row.append(head);
-
-    const cell = document.createElement("td");
-    this.children[0].render(cell);
-    row.append(cell);
-
-    parentElement.append(row);
-  }
-
-  toString() {
-    return `#<${this.constructor.name} name=${print(this.#name)} value=${print(
-      this.value
-    )}>`;
-  }
-
-  print() {
-    return `${this.#name}: ${this.children[0].print()}`;
-  }
-}
-
-export class ObjectMorph extends DOMMorph {
-  constructor(value) {
-    super(value);
-    this.addChildrenFrom(value);
-  }
-
-  addChildrenFrom(object) {
-    Object.entries(object).forEach((entry) => {
-      this.add(this.buildEntryMorph(entry));
+  #enableObservers(eventName, observers) {
+    observers.forEach((observer) => {
+      this.#element.addEventListener(eventName, this.#listenerForObserver(observer));
     });
   }
 
-  buildEntryMorph([name, value]) {
-    return new ObjectEntryMorph(name, value);
-  }
-
-  render(parent) {
-    console.debug("render", this.toString());
-    if (this.isEmpty()) {
-      this.renderEmpty(parent);
-    } else {
-      this.renderObject(parent);
+  #listenerForObserver(observer) {
+    return (event) => {
+      observer.update(this, event);
+      if (this.dontFollowThrough()) {
+        event.preventDefault();
+      }
     }
   }
-
-  renderObject(parent) {
-    const table = this.createElement("table", {
-      class: ["table", "table-hover"],
-    });
-    this.containerElement = table;
-
-    this.children.forEach((child) => {
-      child.render(table);
-    });
-
-    parent.append(table);
-  }
-
-  renderEmpty(parent) {
-    const element = this.createElement("p", { class: "text-muted" });
-    this.containerElement = element;
-
-    element.innerText = this.emptyMessage;
-    parent.append(element);
-  }
-
-  get emptyMessage() {
-    return "Empty Object";
-  }
-
-  isEmpty() {
-    return Object.values(this.value).length === 0;
-  }
-
-  print() {
-    return `{${this.children.map((child) => child.print()).join(", ")}}`;
-  }
-}
-MorphFactory.register("object", ObjectMorph, {
-  predicate: (value) =>
-    value != null && typeof value === "object" && !Array.isArray(value),
-});
-
-export class ArrayMorph extends ObjectMorph {
-  get emptyMessage() {
-    return "Empty Array";
-  }
-
-  isEmpty() {
-    return this.value.length === 0;
-  }
-
-  print() {
-    return `[${this.children.map((child) => child.print()).join(", ")}]`;
-  }
-}
-MorphFactory.register("array", ArrayMorph, {
-  predicate: (value) => Array.isArray(value),
-});
-
-export class RecordMorph extends DOMMorph {
-  #fields;
-
-  constructor(record) {
-    super(record);
-    this.#fields = Object.keys(record);
-    this.#fields.forEach((field) => {
-      this.add(Morph.of(record[field]));
-    });
-  }
-
-  get fields() {
-    return this.#fields;
-  }
-
-  get(field) {
-    const index = thid.#fields.indexOf(field);
-    if (index < 0) return;
-
-    return this.children[index];
-  }
-
-  render(parentElement) {
-    const row = document.createElement("tr");
-
-    this.children.forEach((child) => {
-      const cell = document.createElement("td");
-      child.render(cell);
-      row.append(cell);
-    });
-
-    parentElement.append(row);
-  }
 }
 
-export class RelationMorph extends ArrayMorph {
-  addChildrenFrom(relation) {
-    relation.forEach((entry) => {
-      this.add(this.buildEntryMorph(entry));
-    });
-  }
-
-  buildEntryMorph(record) {
-    return new RecordMorph(record);
-  }
-
-  get fields() {
-    return this.children[0].fields;
-  }
-
-  get emptyMessage() {
-    return "Empty Relation";
-  }
-
-  renderObject(parent) {
-    const table = this.createElement("table", {
-      class: ["table", "table-hover", "table-striped"],
-    });
-    this.containerElement = table;
-
-    const thead = this.createElement("thead");
-    this.fields.forEach((field) => {
-      const th = this.createElement("th");
-      th.innerText = field;
-      thead.append(th);
-    });
-    table.append(thead);
-
-    const tbody = this.createElement("tbody");
-    this.children.forEach((child) => {
-      child.render(tbody);
-    });
-    table.append(tbody);
-
-    this.renderContainer(parent);
-  }
-
-  print() {
-    return `[${this.children.map((child) => child.print()).join(", ")}]`;
-  }
-}
-
-function isRelation(array) {
-  return (
-    Array.isArray(array) &&
-    Object.prototype.toString.call(array[0]) === "[object Object]" &&
-    !(array[0] instanceof Morph)
-  );
-}
-
-MorphFactory.register("relation", RelationMorph, {
-  predicate: isRelation,
-});
-
-export class TimeMorph extends ActiveDOMMorph {
-  print() {
-    if (this.value == null) {
-      return "-";
-    }
-
-    return `${this.fmtDate()} ${this.fmtTime()}`;
-  }
-
-  fmtDate() {
-    const d = this.value;
-    return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
-  }
-
-  fmtTime() {
-    const d = this.value;
-    return `${d.getHours()}:${d.getMinutes()}:${d.getSeconds()}`;
-  }
-}
-MorphFactory.register("time", TimeMorph, {
-  predicate: (value) => value instanceof Date,
-});
-
-export class ErrorMorph extends DOMMorph {
-  print() {
-    return `Error: ${this.value.message}`;
-  }
-
-  create() {
-    return this.createElement("div", { class: "text-danger" });
-  }
-}
-MorphFactory.register("error", ErrorMorph, {
-  predicate: (value) => value instanceof Error,
-});
-
-export class FunctionMorph extends DOMMorph {
-  constructor(parameterMorphs, outputMorph) {
-    super(undefined);
-    this.parameterMorphs = parameterMorphs;
-    this.outputMorph = outputMorph;
-  }
-
-  invoke() {
-    throw new Error("should be implemented by subclass");
-  }
-
-  renderValue() {}
-
-  get params() {
-    return this.parameterMorphs.map((param) => param.value);
-  }
-
-  render(parent) {
-    // this.value = this.invoke();
-    this.outputMorph.render(parent);
-    this.outputMorph.value = this.invoke();
-    this.children[0] = this.outputMorph;
-    this.children[0].render(parent);
-    setInterval(() => {
-      // this.value = this.invoke();
-      this.children[0].value = this.invoke();
-      this.children[0].render(parent);
-    }, 1000);
-  }
-
-  print() {
-    return "f(x)";
-  }
-}
-
-export class NowMorph extends FunctionMorph {
+export class HTMLDocumentMorph extends HTMLElementMorph {
   constructor() {
-    super([], new TimeMorph(undefined));
+    super(new NullMorph(), 'document');
   }
 
-  invoke() {
-    return new Date();
-  }
-
-  print() {
-    return "now()";
-  }
+  draw() { }
+  get element() { return document }
 }
 
-export class SumMorph extends FunctionMorph {
-  constructor(numberMorphs) {
-    super(numberMorphs, new NumberMorph(undefined));
+export class HTMLDocumentBodyMorph extends HTMLElementMorph {
+  constructor(attributes = {}, children = []) {
+    super(new HTMLDocumentMorph(), 'body', attributes, children);
   }
 
-  invoke() {
-    return this.params.reduce((sum, x) => sum + x, 0);
-  }
-
-  print() {
-    return "sum()";
-  }
+  isInitialized() { return true }
+  get element() { return document.body }
 }
