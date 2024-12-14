@@ -1,0 +1,46 @@
+<html>
+    <head>
+        <link href="/assets/bootstrap/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-B0vP5xmATw1+K9KRQjQERJvTumQW0nPEzvF6L/Z6nronJ3oUOFUFpCjEUQouq2+l">
+    </head>
+    <body>
+        <main id="test"></main>
+        <script type="module">
+         import { Morph, NowMorph, SumMorph } from '/assets/js/morphic.mjs';
+
+         const container = document.getElementById('test');
+
+         Morph.of(null).render(container);
+         Morph.of(undefined).render(container);
+         Morph.of(true).render(container);
+         Morph.of(false).render(container);
+         Morph.of(1).render(container);
+         Morph.of("Delon").render(container);
+
+         Morph.of([]).render(container);
+         Morph.of({}).render(container);
+         Morph.of([null]).render(container);
+
+         Morph.of([1, 3, 4]).render(container);
+         Morph.of([{ a: 1, b: true }, { a: 3, b: false }, { a: 4, b: false }]).render(container);
+
+         // new NowMorph().render(container);
+         //
+         // const morphs = [1, 2, 3, 5].map((x) => Morph.of(x));
+         // morphs.forEach((morph) => { morph.render(container) });
+         // new SumMorph(morphs).render(container);
+
+         // const numbers = [1, 2, 3, 5].map((x) => Morph.of(x));
+         // numbers.forEach((number) => { number.render(container) })
+         // const sum = new SumMorph(numbers);
+         // sum.render(container);
+
+         // const table = Morph.of([...numbers, sum]);
+         // table.render(container);
+
+         // const number = Morph.of(340)
+         // number.render(container);
+        </script>
+        <script src="/assets/vendor/jquery/jquery.min.js" integrity="sha384-tsQFqpEReu7ZLhBV2VZlAu7zcOV+rXbYlF2cqB8txI/8aZajjp4Bqd+V6D5IgvKT"></script>
+        <script src="/assets/vendor/bootstrap/js/bootstrap.bundle.min.js" integrity="sha384-u/bQvRA/1bobcXlcEYpsEdFVK/vJs3+T+nXLsBYJthmdBuavHvAW6UsmqO2Gd/F9"></script>
+    </body>
+</html>
