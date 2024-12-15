@@ -512,6 +512,10 @@ export class HTMLAttributeMorph extends Morph {
   inspect() {
     return `${this.name}=${this.value.inspect()}`
   }
+
+  toString() {
+    return `#<${this.constructor.name}:${this.hexId} ${this.inspect()}>`
+  }
 }
 
 export class HTMLAttributeListMorph extends Morph {
@@ -544,7 +548,8 @@ export class HTMLAttributeListMorph extends Morph {
     this.parent.redraw(this);
   }
 
-  drawSelf() { }
+  drawSelf() {
+  }
 }
 
 export class HTMLElementMorph extends Morph {

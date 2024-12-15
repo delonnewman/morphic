@@ -8,6 +8,7 @@
              update(morph) {
                  this.you = !this.you;
                  morph.children[0].value = this.you ? "Hey You!" : "Hey!";
+                 morph.attributes.update('href', this.you ? '#hey-you' : '#hey')
                  console.log(morph.children[0]);
              }
          }
