@@ -548,7 +548,14 @@ export class HTMLAttributeListMorph extends Morph {
     this.parent.redraw(this);
   }
 
-  drawSelf() {
+  drawSelf() { }
+
+  inspect() {
+    return Object.values(this.#attributes).map((it) => it.inspect()).join(' ');
+  }
+
+  toString() {
+    return `#<${this.constructor.name}:${this.hexId} ${this.inspect()}>`
   }
 }
 
