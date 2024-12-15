@@ -464,6 +464,8 @@ export class HTMLClassListMorph extends Morph {
   get children() { return EMPTY_ARRAY }
 
   drawSelf() {
+    if (this.#classes.length === 0) return;
+
     const tokens = this.element.classList.keys()
     tokens.forEach((key) => {
       this.element.classList.remove(key);
