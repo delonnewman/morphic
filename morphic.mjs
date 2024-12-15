@@ -310,6 +310,7 @@ export class Morph {
   get morphId() { return this.#morphId; }
 
   draw() {
+    console.log('drawing', this.toString());
     if (!this.isInitialized()) {
       this.initialize();
       this.#initialized = true;
@@ -328,8 +329,14 @@ export class Morph {
     throw new NotImplementedError('drawSelf');
   }
 
+  canRedraw() { return false }
   redraw(child) {
-    child.draw();
+    console.log('redrawing', child.toString());
+    if (child.canRedraw()) {
+      child.draw();
+    } else {
+      this.draw();
+    }
   }
 
   initialize() {}
@@ -386,6 +393,7 @@ export class AtomicMorph extends Morph {
   }
 
   set value(newValue) {
+    console.log('changing value', this.toString(), newValue);
     const object = objectOf(newValue)
     if (this.#value.isNotEqual(object)) {
       const oldValue = this.#value;
@@ -602,11 +610,6 @@ export class HTMLElementMorph extends Morph {
   }
 
   initialize() {
-    const attributes = { ...this.attributes };
-    let classList = attributes.class ?? [];
-    delete attributes.class;
-    if (typeof classList === "string") classList = classList.split(" ");
-
     const element = this.#element = document.createElement(this.tagName);
     this.events.forEach((eventName) => {
       const observers = this.#eventObservers[eventName];
@@ -616,14 +619,11 @@ export class HTMLElementMorph extends Morph {
     this.parent.element.append(element);
   }
 
-  draw() {
-    console.log('drawing', this.toString());
-    super.draw();
-  }
+  canRedraw() { return true }
 
   drawSelf() {
     console.log('drawing self', this.toString());
-    this.#attributes.draw()
+    this.#attributes.draw();
   }
 
   #enableObservers(eventName, observers) {
