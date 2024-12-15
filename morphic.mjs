@@ -318,7 +318,6 @@ export class Morph extends BaseObject {
   #parent;
   #initialized;
   #firstDraw;
-
   constructor(parent) {
     super();
     this.#morphId = nextID();
@@ -392,7 +391,6 @@ export class AtomicMorph extends Morph {
   #value;
   #observers;
   #originalValue;
-
   constructor(parent, initialValue) {
     super(parent);
     this.#value = initialValue;
@@ -441,7 +439,6 @@ export class AtomicMorph extends Morph {
 
 export class TextNodeMorph extends AtomicMorph {
   #node;
-
   constructor(parent, text) {
     super(parent, text);
   }
@@ -461,7 +458,6 @@ export class TextNodeMorph extends AtomicMorph {
 
 export class HTMLClassListMorph extends Morph {
   #classes;
-
   constructor(parent, classes) {
     super(parent);
     this.#classes = classes;
@@ -508,7 +504,6 @@ export class HTMLClassListMorph extends Morph {
 export class HTMLAttributeMorph extends Morph {
   #name;
   #value;
-
   constructor(parent, name, value) {
     super(parent);
     this.#name = name;
@@ -547,7 +542,6 @@ export class HTMLAttributeListMorph extends Morph {
   #attributes;
   #classList;
   #children;
-
   constructor(parent, attributes) {
     super(parent)
     attributes = { ...attributes, id: this.parent.elementId };
@@ -590,7 +584,6 @@ export class HTMLElementMorph extends Morph {
   #children;
   #eventObservers;
   #element;
-
   constructor(parent, tagName, attributes = {}, children = []) {
     super(parent);
     this.#tagName = tagName;
@@ -710,5 +703,210 @@ export class FAIconMorph extends HTMLElementMorph {
   constructor(parent, name) {
     super(parent, 'i', { class: ['fa', `fa-${name}`] });
     this.#name = name;
+  }
+}
+
+export class HTML2DCanvasMorph extends HTMLElementMorph {
+  #context;
+  constructor(parent, attributes, children) {
+    super(parent, 'canvas', attributes, children);
+  }
+
+  get context() { return this.#context }
+
+  initialize() {
+    super.initialize();
+    this.#context = this.element.getContext('2d');
+  }
+}
+
+export class CanvasChildMorph extends Morph {
+  get context() { return this.parent.context }
+  get children() { return EMPTY_ARRAY } // for now default to no children
+}
+
+export class ValueObject extends BaseObject {
+  static {
+    this.include(Hashable);
+  }
+
+  isEqual(other) {
+    if (!(other instanceof this.constructor)) return false;
+
+    return this.hashCode() === other.hashCode();
+  }
+
+  toString() {
+    return `#<${this.constructor.name}:${this.hashCode()}>`;
+  }
+}
+
+export class Position extends ValueObject {
+  #x;
+  #y;
+  constructor(x, y) {
+    super();
+    this.#x = x;
+    this.#y = y;
+  }
+
+  get x() { return this.#x }
+  get y() { return this.#y }
+
+  hashCode() {
+    return hashCombine(this.#x.hashCode(), this.#y.hashCode());
+  }
+
+  inspect() {
+    return `(${this.x}, ${this.y})`;
+  }
+
+  toString() {
+    return `#<${this.constructor.name}:${this.hashCode()} ${this.inspect()}>`;
+  }
+}
+
+export class Shape extends ValueObject {
+  static defaultStyle() {
+    return new FillStyle('black');
+  }
+
+  #position;
+  constructor(position) {
+    super();
+    this.#position = position;
+  }
+
+  get position() { return this.#position }
+
+  morph(parent, style = this.constructor.defaultStyle()) {
+    return new CanvasShapeMorph(parent, this, style);
+  }
+
+  toString() {
+    return `#<${this.constructor.name}:${this.hashCode()} @ ${this.position.inspect()}>`;
+  }
+}
+
+export class Rectangle extends Shape {
+  static defaultStyle() {
+    return new FillStyle('red');
+  }
+
+  #width;
+  #height;
+  constructor(position, width, height) {
+    super(position);
+    this.#width = width;
+    this.#height = height;
+  }
+
+  get width() { return this.#width }
+  get height() { return this.#height }
+
+  draw(context) {
+    context.rect(this.position.x, this.position.y, this.width, this.height);
+    return this;
+  }
+}
+
+export class Circle extends Shape {
+  static defaultStyle() {
+    return new StrokeStyle('blue', 10);
+  }
+
+  #radius;
+  constructor(position, radius) {
+    super(position);
+    this.#radius = radius;
+  }
+
+  get radius() { return this.#radius }
+
+  draw(context) {
+    context.arc(this.position.x, this.position.y, this.radius, 0, 2 * Math.PI);
+  }
+}
+
+export class Style extends ValueObject {
+  draw(context) {
+    throw new NotImplementError('draw');
+  }
+}
+
+export class FillStyle extends Style {
+  #color;
+  constructor(color) {
+    super();
+    this.#color = color;
+  }
+
+  get color() { return this.#color }
+
+  hashCode() {
+    return this.color.hashCode();
+  }
+
+  draw(context) {
+    context.fillStyle = this.color;
+    context.fill();
+  }
+
+  toString() {
+    return `#<${this.constructor.name}:${this.hashCode()} color=${this.color}>`;
+  }
+}
+
+export class StrokeStyle extends Style {
+  #color;
+  #width;
+  constructor(color, width) {
+    super();
+    this.#color = color;
+    this.#width = width;
+  }
+
+  get color() { return this.#color }
+  get width() { return this.#width }
+
+  hashCode() {
+    return hashCombine(this.color.hashCode(), this.width.hashCode());
+  }
+
+  draw(context) {
+    console.log(this.toString(), this.width);
+    context.lineWith = this.width;
+    context.strokeStyle = this.color;
+    context.stroke()
+  }
+
+  toString() {
+    return `#<${this.constructor.name}:${this.hashCode()} color=${this.color} width=${this.width}>`;
+  }
+}
+
+export class CanvasShapeMorph extends CanvasChildMorph {
+  #shape;
+  #style;
+  constructor(parent, shape, style) {
+    super(parent);
+    this.#shape = shape;
+    this.#style = style;
+  }
+
+  set shape(shape) {
+    this.#shape = shape
+    this.parent.redraw(this);
+  }
+
+  set style(style) {
+    this.#style = style;
+    this.parent.redraw(this)
+  }
+
+  drawSelf() {
+    this.context.beginPath();
+    this.#shape.draw(this.context);
+    this.#style.draw(this.context);
   }
 }

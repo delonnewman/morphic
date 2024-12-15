@@ -1,9 +1,17 @@
 <html>
     <head>
-        <link rel="stylesheet" href="/vendor/bootstrap/css/bootstrap.min.css">
-        <link rel="stylesheet" href="/vendor/fontawesome/css/fontawesome.min.css">
         <script type="module">
-         import { HTMLDocumentBodyMorph, HTMLElementMorph, FAIconMorph } from '/morphic.mjs';
+         import {
+             HTMLDocumentBodyMorph,
+             HTMLElementMorph,
+             HTML2DCanvasMorph,
+             CanvasShapeMorph,
+             Position,
+             Rectangle,
+             Circle,
+             FillStyle,
+             StrokeStyle,
+         } from '/morphic.mjs';
 
          const ClickObserver = {
              you: false,
@@ -20,12 +28,32 @@
              .withText("Hey!")
              .observeEvent('click', ClickObserver);
 
-         body.createElement('p').createElement('strong').withText("Delon!");
-         body.createElement('button', { class: ['btn', 'btn-primary'] })
-             .addChild(FAIconMorph, 'clock');
+         const canvas = body.createElement('div')
+                            .addChild(HTML2DCanvasMorph, { width: 500, height: 500 });
+
+         const rect = canvas.addChild(
+            CanvasShapeMorph,
+            new Rectangle(new Position(0, 0), 50, 50),
+            new FillStyle('green')
+         );
+
+         const circle = canvas.addChild(
+             CanvasShapeMorph,
+             new Circle(new Position(25, 80), 25),
+             new StrokeStyle('red', 15),
+         );
+
+         const RectangleControl = {
+             update(morph) {
+                 rect.style = new StrokeStyle('blue', 20);
+             }
+         };
+
+         body.createElement('button', { type: 'button' })
+             .withText('Rectangle')
+             .observeEvent('click', RectangleControl);
 
          body.draw();
         </script>
-        <script src="/vendor/bootstrap/js/bootstrap.bundle.min.js">
     </head>
 </html>
