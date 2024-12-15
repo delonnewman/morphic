@@ -478,6 +478,10 @@ export class HTMLClassListMorph extends Morph {
 
     this.element.classList.add(...this.#classes);
   }
+
+  inspect() {
+    return `"${this.#classes.join(' ')}"`
+  }
 }
 
 export class HTMLAttributeMorph extends Morph {
@@ -599,11 +603,15 @@ export class HTMLElementMorph extends Morph {
     return this;
   }
 
-  createElement(tagName, attributes = {}, children = []) {
-    const morph = new HTMLElementMorph(this, tagName, attributes, children);
+  addChild(morphClass, ...args) {
+    const morph = new morphClass(this, ...args);
     this.children.push(morph)
     if (this.isInitialized()) { this.parent.redraw(this) }
     return morph;
+  }
+
+  createElement(tagName, attributes = {}, children = []) {
+    return this.addChild(HTMLElementMorph, tagName, attributes, children);
   }
 
   withText(text) {
@@ -673,4 +681,13 @@ export class HTMLDocumentBodyMorph extends HTMLElementMorph {
 
   isInitialized() { return true }
   get element() { return document.body }
+}
+
+export class FAIconMorph extends HTMLElementMorph {
+  #name;
+
+  constructor(parent, name) {
+    super(parent, 'i', { class: ['fa', `fa-${name}`] });
+    this.#name = name;
+  }
 }

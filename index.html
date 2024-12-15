@@ -1,7 +1,9 @@
 <html>
     <head>
+        <link rel="stylesheet" href="/vendor/bootstrap/css/bootstrap.min.css">
+        <link rel="stylesheet" href="/vendor/fontawesome/css/fontawesome.min.css">
         <script type="module">
-         import { HTMLDocumentBodyMorph, HTMLElementMorph } from '/morphic.mjs';
+         import { HTMLDocumentBodyMorph, HTMLElementMorph, FAIconMorph } from '/morphic.mjs';
 
          const ClickObserver = {
              you: false,
@@ -9,7 +11,7 @@
                  this.you = !this.you;
                  morph.children[0].value = this.you ? "Hey You!" : "Hey!";
                  morph.attributes.update('href', this.you ? '#hey-you' : '#hey')
-                 console.log(morph.children[0]);
+                 body.children[1].children[0].children[0].value = new Date().toString()
              }
          }
 
@@ -19,8 +21,11 @@
              .observeEvent('click', ClickObserver);
 
          body.createElement('p').createElement('strong').withText("Delon!");
+         body.createElement('button', { class: ['btn', 'btn-primary'] })
+             .addChild(FAIconMorph, 'clock');
+
          body.draw();
-         console.log(body)
         </script>
+        <script src="/vendor/bootstrap/js/bootstrap.bundle.min.js">
     </head>
 </html>
