@@ -14,6 +14,7 @@ const Inspectable = {
 
 class NotImplementedError extends Error {
   constructor(methodName) {
+    super();
     this.name = 'NotImplementedError';
     this.message = `${methodName} must be implemented by subclasses`;
   }
@@ -432,6 +433,109 @@ export class TextNodeMorph extends AtomicMorph {
   }
 }
 
+export class HTMLClassListMorph extends Morph {
+  #classes;
+
+  constructor(parent, classes) {
+    super(parent);
+    this.#classes = classes;
+  }
+
+  get element() { return this.parent.parent.element }
+
+  remove(className) {
+    const classes = [ ...this.#classes ];
+    const index = classes.indexOf(className);
+    delete classes[index];
+    this.#classes = classes;
+    this.parent.redraw(this);
+  }
+
+  add(className) {
+    const classes = [ ...this.#classes, className ];
+    this.#classes = classes;
+    this.parent.redraw(this);
+  }
+
+  initialize() {
+    this.drawSelf();
+  }
+
+  get children() { return EMPTY_ARRAY }
+
+  drawSelf() {
+    const tokens = this.element.classList.keys()
+    tokens.forEach((key) => {
+      this.element.classList.remove(key);
+    });
+
+    this.element.classList.add(...this.#classes);
+  }
+}
+
+export class HTMLAttributeMorph extends Morph {
+  #name;
+  #value;
+
+  constructor(parent, name, value) {
+    super(parent);
+    this.#name = name;
+    this.#value = value;
+  }
+
+  get element() { return this.parent.parent.element }
+
+  get name() { return this.#name }
+  get value() { return this.#value }
+  set value(newValue) {
+    this.#value = newValue;
+    this.parent.redraw(this);
+  }
+
+  initialize() {
+    this.drawSelf();
+  }
+
+  get children() { return EMPTY_ARRAY }
+
+  drawSelf() {
+    this.element.setAttribute(this.name, this.value);
+  }
+}
+
+export class HTMLAttributeListMorph extends Morph {
+  #attributes;
+  #classList;
+  #children;
+
+  constructor(parent, attributes) {
+    super(parent)
+    attributes = { ...attributes, id: this.parent.elementId };
+    this.#attributes =
+      Object.entries(attributes)
+            .map(([name, value]) => new HTMLAttributeMorph(this, name, value))
+            .reduce((mapping, morph) => ({ ...mapping, [morph.name]: morph }), {});
+
+    this.#children = Object.values(this.#attributes);
+
+    let classList = attributes.class ?? [];
+    delete attributes.class;
+    if (typeof classList === "string") this.#classList = classList.split(" ");
+    this.#classList = new HTMLClassListMorph(this, classList);
+    this.#children.push(this.#classList);
+  }
+
+  get classList() { return this.#classList }
+  get children() { return this.#children }
+
+  update(name, value) {
+    this.#attributes[name].value = value;
+    this.parent.redraw(this);
+  }
+
+  drawSelf() { }
+}
+
 export class HTMLElementMorph extends Morph {
   #tagName;
   #attributes;
@@ -442,7 +546,7 @@ export class HTMLElementMorph extends Morph {
   constructor(parent, tagName, attributes = {}, children = []) {
     super(parent);
     this.#tagName = tagName;
-    this.#attributes = Object.freeze({ ...attributes, id: this.elementId });
+    this.#attributes = new HTMLAttributeListMorph(this, { ...attributes, id: this.elementId });
     this.#children = [ ...children ];
     this.#eventObservers = {};
   }
@@ -463,7 +567,7 @@ export class HTMLElementMorph extends Morph {
     return `#<${this.constructor.name}:0x${this.hexId} ${this.tagName} ${this.attributes.inspect()} ${this.children.inspect()}>`;
   }
 
-  observeEventWith(event, ...observers) {
+  observeEvent(event, ...observers) {
     this.#eventObservers[event] ??= [];
     this.#eventObservers[event].push(...observers);
     if (this.isInitialized()) {
@@ -475,7 +579,6 @@ export class HTMLElementMorph extends Morph {
   createElement(tagName, attributes = {}, children = []) {
     const morph = new HTMLElementMorph(this, tagName, attributes, children);
     this.children.push(morph)
-    console.log(this.toString(), 'init', this.isInitialized());
     if (this.isInitialized()) { this.parent.redraw(this) }
     return morph;
   }
@@ -503,11 +606,6 @@ export class HTMLElementMorph extends Morph {
     if (typeof classList === "string") classList = classList.split(" ");
 
     const element = this.#element = document.createElement(this.tagName);
-    element.classList.add(...classList);
-    Object.entries(attributes).forEach(([name, value]) => {
-      element.setAttribute(name, value);
-    });
-
     this.events.forEach((eventName) => {
       const observers = this.#eventObservers[eventName];
       this.#enableObservers(eventName, observers);
@@ -523,6 +621,7 @@ export class HTMLElementMorph extends Morph {
 
   drawSelf() {
     console.log('drawing self', this.toString());
+    this.#attributes.draw()
   }
 
   #enableObservers(eventName, observers) {

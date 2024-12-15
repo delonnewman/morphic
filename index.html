@@ -6,7 +6,7 @@
          const body = new HTMLDocumentBodyMorph()
          body.createElement('a', { href: '#' })
              .withText("Hey!")
-             .observeEventWith('click', { update(morph, event) { console.log('clicked', morph.toString(), event) } });
+             .observeEvent('click', { update(morph, event) { console.log('clicked', morph.toString(), event) } });
 
          body.createElement('p').createElement('strong').withText("Delon!");
          body.draw();
