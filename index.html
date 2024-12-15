@@ -3,10 +3,19 @@
         <script type="module">
          import { HTMLDocumentBodyMorph, HTMLElementMorph } from '/morphic.mjs';
 
+         const ClickObserver = {
+             you: false,
+             update(morph) {
+                 this.you = !this.you;
+                 morph.children[0].value = this.you ? "Hey You!" : "Hey!";
+                 console.log(morph.children[0]);
+             }
+         }
+
          const body = new HTMLDocumentBodyMorph()
          body.createElement('a', { href: '#' })
              .withText("Hey!")
-             .observeEvent('click', { update(morph, event) { console.log('clicked', morph.toString(), event) } });
+             .observeEvent('click', ClickObserver);
 
          body.createElement('p').createElement('strong').withText("Delon!");
          body.draw();
