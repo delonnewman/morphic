@@ -4,12 +4,16 @@ const NODE_CUSTOM_INSPECT_SYMBOL = Symbol.for('nodejs.util.inspect.custom');
 const EMPTY_ARRAY = Object.freeze([]);
 
 const Inspectable = {
-  // Inspecting
+  // technical detailed display
   inspect() {
     return this.toString();
   },
-  [DENO_CUSTOM_INSPECT_SYMBOL]() { return this.toString() },
-  [NODE_CUSTOM_INSPECT_SYMBOL]() { return this.toString() },
+  // user display (may be evaluated in an HTML context)
+  display() {
+    return this.inspect();
+  },
+  [DENO_CUSTOM_INSPECT_SYMBOL]() { return this.inspect() },
+  [NODE_CUSTOM_INSPECT_SYMBOL]() { return this.inspect() },
 };
 
 class NotImplementedError extends Error {
@@ -52,10 +56,55 @@ const Equatable = {
   isNotEquivalent(other) { return !this.isEquivalent(other) },
 };
 
-const Base = Object.assign({}, Inspectable, Equatable);
+// Mixins & object extension
+Object.assign(Object.prototype, {
+  extend(...mixins) {
+    mixins.forEach((mixin) => {
+      Object.assign(this, mixin);
+    });
+    return this;
+  },
+});
+
+const Base = {
+  hasProperty(property) {
+    return Reflect.has(this, property);
+  },
+
+  hasMethod(method) {
+    return this.has(method) && typeof Reflect.get(this, method) === 'function';
+  },
+
+  getAllPropertyNames() {
+    const names = [];
+    for (let name in this) { names.push(name) }
+    return names;
+  },
+
+  freeze() {
+    return Object.freeze(this);
+  },
+
+  morph(parent) {
+    return new ObjectMorph(parent, this);
+  }
+};
+Base.extend(Inspectable, Equatable);
+
+export class BaseObject {
+  static include(...mixins) {
+    this.prototype.extend(...mixins);
+    return this;
+  }
+
+  static {
+    this.include(Base);
+    this.extend(Base);
+  }
+}
 
 // Core extensions
-Object.assign(Object.prototype, Equatable, {
+Object.prototype.extend(Base, {
   isNil() { return false },
   inspect() {
     return `{${Object.entries(this)
@@ -72,10 +121,11 @@ function hashCombine(seed, hash) {
 
 const MORPH_HASH_CODE_SYMBOL = Symbol.for('#Morphic.cachedHashCode');
 
-Object.assign(Array.prototype, Equatable, Hashable, {
+Array.prototype.extend(Equatable, Hashable, Inspectable, {
   inspect() {
     return `[${this.map((item) => item.inspect()).join(", ")}]`;
   },
+
   hashCode() {
     if (!this[MORPHIC_HASH_CODE_SYMBOL]) {
       this[MORPHIC_HASH_CODE_SYMBOL] = this.reduce((hash, item) => hashCombine(hash, item.hashCode()));
@@ -83,6 +133,7 @@ Object.assign(Array.prototype, Equatable, Hashable, {
 
     return this[MORPHIC_HASH_CODE_SYMBOL];
   },
+
   isEqual(other) {
     if (!(other instanceof Array)) return false;
 
@@ -90,22 +141,23 @@ Object.assign(Array.prototype, Equatable, Hashable, {
   }
 });
 
-Object.assign(Date.prototype, Equatable, Hashable, {
+Date.prototype.extend(Equatable, Hashable, Inspectable, {
   inspect() {
     return this.toString();
   },
+
   hashCode() {
     return this.valueOf();
   },
 });
 
-Object.assign(RegExp.prototype, Equatable, Hashable, {
+RegExp.prototype.extend(Equatable, Hashable, Inspectable, {
   inspect() {
     return this.toString();
   }
 });
 
-Object.assign(Function.prototype, Equatable, {
+Function.prototype.extend(Equatable, Inspectable, {
   inspect() {
     return this.toString();
   }
@@ -115,16 +167,19 @@ function booleanNumberCompare(boolean, number) {
   return boolean ? number === 1 : number === 0;
 }
 
-Object.assign(Number.prototype, Equatable, Hashable, {
+Number.prototype.extend(Equatable, Hashable, Inspectable, {
   inspect() {
     return this.toString();
   },
+
   hashCode() {
     return this;
   },
+
   isEqual(other) {
     return this === other;
   },
+
   isEquivalent(other) {
     if (this.isEqual(other)) return true;
 
@@ -151,16 +206,19 @@ function booleanStringCompare(boolean, string) {
     : lower === 'no' || lower === '0' || lower === 'false';
 }
 
-Object.assign(Boolean.prototype, Equatable, Hashable, {
+Boolean.prototype.extend(Equatable, Hashable, Inspectable, {
   inspect() {
     return this ? "Yes" : "No";
   },
+
   hashCode() {
     return this ? 1 : 0;
   },
+
   isEqual(other) {
     return this === other;
   },
+
   isEquivalent(other) {
     if (this.isEqual(other)) return true;
 
@@ -191,7 +249,7 @@ function stringHash(str) {
   return code;
 }
 
-Object.assign(String.prototype, Equatable, Hashable, {
+String.prototype.extend(Equatable, Hashable, Inspectable, {
   inspect() {
     return `"${this}"`;
   },
@@ -216,8 +274,7 @@ Object.assign(String.prototype, Equatable, Hashable, {
 
 // A default Null object
 const NilBase = function(){};
-Object.assign(NilBase, Base);
-Object.assign(NilBase, {
+NilBase.extend(Base, {
   inspect() { return '-' },
   toString() { return 'nil' },
   valueOf() { return undefined },
@@ -246,29 +303,7 @@ export const Nil = new Proxy(NilBase, NilHandler);
 function objectOf(value) {
   if (value == null) return Nil;
 
-  return value;
-}
-
-export class MorphFactory {
-  static registry = [];
-  static register(constructor, predicate) {
-    this.registry.unshift({
-      predicate,
-      constructor,
-    });
-  }
-
-  buildFor(value) {
-    const registry = this.constructor.registry;
-
-    for (const { predicate, constructor } of registry) {
-      if (predicate(value)) {
-        return new constructor(value);
-      }
-    }
-
-    throw new Error(`Don't know how to make a morph for ${value.inspect()}`);
-  }
+  return Object(value);
 }
 
 export const nextID = (() => {
@@ -278,30 +313,14 @@ export const nextID = (() => {
   }
 })();
 
-export class Morph {
-  static {
-    Object.assign(this, Base);
-  }
-
-  static #factory = undefined;
-  static factory() {
-    return (this.#factory ??= new MorphFactory());
-  }
-
-  static of(value) {
-    if (value instanceof Morph) {
-      return value;
-    }
-
-    return this.factory().buildFor(objectOf(value));
-  }
-
+export class Morph extends BaseObject {
   #morphId;
   #parent;
   #initialized;
   #firstDraw;
 
   constructor(parent) {
+    super();
     this.#morphId = nextID();
     this.#parent = parent;
     this.#initialized = false;
@@ -355,17 +374,19 @@ export class Morph {
   get hexId() {
     return `${this.morphId.toString(16).padStart(4, "0")}`;
   }
-}
 
-export class NullMorph extends Morph {
-  constructor() {
-    super(Nil);
+  morph() {
+    return this;
   }
-
-  get element() { return Nil }
-  get children() { return EMPTY_ARRAY }
-  drawSelf() {  }
 }
+
+export const NilMorph = {
+  get parent() { return Nil },
+  get element() { return Nil },
+  get children() { return EMPTY_ARRAY },
+  drawSelf() {  },
+};
+Object.setPrototypeOf(NilMorph, Morph.prototype);
 
 export class AtomicMorph extends Morph {
   #value;
@@ -471,7 +492,7 @@ export class HTMLClassListMorph extends Morph {
   drawSelf() {
     if (this.#classes.length === 0) return;
 
-    const tokens = this.element.classList.keys()
+    const tokens = this.element.classList;
     tokens.forEach((key) => {
       this.element.classList.remove(key);
     });
@@ -667,7 +688,7 @@ export class HTMLElementMorph extends Morph {
 
 export class HTMLDocumentMorph extends HTMLElementMorph {
   constructor() {
-    super(new NullMorph(), 'document');
+    super(NilMorph, 'document');
   }
 
   draw() { }
