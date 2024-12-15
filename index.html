@@ -9,8 +9,10 @@
              Position,
              Rectangle,
              Circle,
-             FillStyle,
-             StrokeStyle,
+             FillColor,
+             StrokeColor,
+             StrokeWidth,
+             StyleCombination,
          } from '/morphic.mjs';
 
          const ClickObserver = {
@@ -28,30 +30,36 @@
              .withText("Hey!")
              .observeEvent('click', ClickObserver);
 
-         const canvas = body.createElement('div')
-                            .addChild(HTML2DCanvasMorph, { width: 500, height: 500 });
-
-         const rect = canvas.addChild(
-            CanvasShapeMorph,
-            new Rectangle(new Position(0, 0), 50, 50),
-            new FillStyle('green')
-         );
-
-         const circle = canvas.addChild(
-             CanvasShapeMorph,
-             new Circle(new Position(25, 80), 25),
-             new StrokeStyle('red', 15),
-         );
+         const fillBlue = new FillColor('blue');
+         const fillGreen = new FillColor('green');
+         const strokeRed = new StrokeColor('red');
+         const stroke15 = new StrokeWidth(15);
 
          const RectangleControl = {
+             blue: false,
              update(morph) {
-                 rect.style = new StrokeStyle('blue', 20);
+                 rect.style = this.blue ? fillGreen : fillBlue;
              }
          };
 
          body.createElement('button', { type: 'button' })
              .withText('Rectangle')
              .observeEvent('click', RectangleControl);
+
+         const canvas = body.createElement('div')
+                            .addChild(HTML2DCanvasMorph, { width: 500, height: 500 });
+
+         const rect = canvas.addChild(
+            CanvasShapeMorph,
+            new Rectangle(new Position(0, 0), 50, 50),
+            fillGreen,
+         );
+
+         const circle = canvas.addChild(
+             CanvasShapeMorph,
+             new Circle(new Position(25, 80), 25),
+             new StyleCombination(strokeRed, new StrokeWidth(20), fillBlue),
+         );
 
          body.draw();
         </script>

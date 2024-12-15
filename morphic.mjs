@@ -834,7 +834,7 @@ export class Style extends ValueObject {
   }
 }
 
-export class FillStyle extends Style {
+export class FillColor extends Style {
   #color;
   constructor(color) {
     super();
@@ -857,31 +857,65 @@ export class FillStyle extends Style {
   }
 }
 
-export class StrokeStyle extends Style {
+export class StrokeColor extends Style {
   #color;
-  #width;
-  constructor(color, width) {
+  constructor(color) {
     super();
     this.#color = color;
-    this.#width = width;
   }
 
   get color() { return this.#color }
-  get width() { return this.#width }
 
   hashCode() {
-    return hashCombine(this.color.hashCode(), this.width.hashCode());
+    return this.color.hashCode();
   }
 
   draw(context) {
-    console.log(this.toString(), this.width);
-    context.lineWith = this.width;
     context.strokeStyle = this.color;
     context.stroke()
   }
 
   toString() {
-    return `#<${this.constructor.name}:${this.hashCode()} color=${this.color} width=${this.width}>`;
+    return `#<${this.constructor.name}:${this.hashCode()} ${this.color}>`;
+  }
+}
+
+export class StrokeWidth extends Style {
+  #width;
+  constructor(width) {
+    super();
+    this.#width = width;
+  }
+
+  get width() { return this.#width }
+
+  hashCode() {
+    return this.width.hashCode();
+  }
+
+  draw(context) {
+    context.lineWith = this.width;
+    context.stroke()
+  }
+
+  toString() {
+    return `#<${this.constructor.name}:${this.hashCode()} ${this.width}>`;
+  }
+}
+
+export class StyleCombination extends Style {
+  #styles;
+  constructor(...styles) {
+    super()
+    this.#styles = styles;
+  }
+
+  hashCode() {
+    this.#styles.hashCode();
+  }
+
+  draw(context) {
+    this.#styles.forEach((style) => { style.draw(context) })
   }
 }
 
