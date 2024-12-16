@@ -85,8 +85,8 @@ const Base = {
     return Object.freeze(this);
   },
 
-  morph(parent) {
-    return new ObjectMorph(parent, this);
+  morph(parent = NilMorph) {
+    return NilMorph;
   }
 };
 Base.extend(Inspectable, Equatable);
@@ -253,14 +253,17 @@ String.prototype.extend(Equatable, Hashable, Inspectable, {
   inspect() {
     return `"${this}"`;
   },
+
   hashCode() {
     return stringHash(this);
   },
+
   isEqual(other) {
     if (typeof other !== 'string') return false;
 
     return this === other;
   },
+
   isEquivalent(other) {
     if (this === `${other}`) return true;
 
@@ -275,7 +278,7 @@ String.prototype.extend(Equatable, Hashable, Inspectable, {
 // A default Null object
 const NilBase = function(){};
 NilBase.extend(Base, {
-  inspect() { return '-' },
+  display() { return '-' },
   toString() { return 'nil' },
   valueOf() { return undefined },
   isNil() { return true },
@@ -380,10 +383,11 @@ export class Morph extends BaseObject {
 }
 
 export const NilMorph = {
-  get parent() { return Nil },
+  get parent() { return NilMorph },
   get element() { return Nil },
   get children() { return EMPTY_ARRAY },
   drawSelf() {  },
+  toString() { return '#<NilMorph>' },
 };
 Object.setPrototypeOf(NilMorph, Morph.prototype);
 
@@ -745,8 +749,6 @@ export class ValueObject extends BaseObject {
 }
 
 export class Position extends ValueObject {
-
-
   #x;
   #y;
   constructor(x, y) {
@@ -806,28 +808,32 @@ export class Shape extends ValueObject {
 
   get position() { return this.#position }
 
-  morph(parent, style = this.constructor.defaultStyle()) {
+  morph(parent = NilMorph, style = this.constructor.defaultStyle()) {
     return new CanvasShapeMorph(parent, this, style);
   }
 
   right(amount) {
-    return this.withPosition(this.position.right(amount));
+    return this.translateTo(this.position.right(amount));
   }
 
   left(amount) {
-    return this.withPosition(this.position.left(amount));
+    return this.translateTo(this.position.left(amount));
   }
 
   up(amount) {
-    return this.withPosition(this.position.up(amount));
+    return this.translateTo(this.position.up(amount));
   }
 
   down(amount) {
-    return this.withPosition(this.position.down(amount));
+    return this.translateTo(this.position.down(amount));
   }
 
-  withPosition(position, ...args) {
-    return new this.constructor(position, ...args);
+  translateTo(position) {
+    throw new NotImplementedError('translateTo');
+  }
+
+  draw(context) {
+    throw new NotImplementedError('draw');
   }
 
   toString() {
@@ -851,9 +857,24 @@ export class Rectangle extends Shape {
   get width() { return this.#width }
   get height() { return this.#height }
 
+  translateTo(position) {
+    return new this.constructor(position, this.width, this.height);
+  }
+
+  hashCode() {
+    return hashCombine(
+      hashCombine(this.position.hashCode(), this.width.hashCode()),
+      this.height.hashCode()
+    );
+  }
+
   draw(context) {
     context.rect(this.position.x, this.position.y, this.width, this.height);
     return this;
+  }
+
+  toString() {
+    return `#<${this.constructor.name}:${this.hashCode()} width=${this.width} height=${this.height} @ ${this.position.inspect()}>`;
   }
 }
 
@@ -870,14 +891,26 @@ export class Circle extends Shape {
 
   get radius() { return this.#radius }
 
+  hashCode() {
+    return hashCombine(this.position.hashCode(), this.radius.hashCode());
+  }
+
+  translateTo(position) {
+    return new this.constructor(position, this.radius);
+  }
+
   draw(context) {
     context.arc(this.position.x, this.position.y, this.radius, 0, 2 * Math.PI);
+  }
+
+  toString() {
+    return `#<${this.constructor.name}:${this.hashCode()} radius=${this.radius} @ ${this.position.inspect()}>`;
   }
 }
 
 export class Style extends ValueObject {
   draw(context) {
-    throw new NotImplementError('draw');
+    throw new NotImplementedError('draw');
   }
 }
 
@@ -1005,8 +1038,13 @@ export class CanvasShapeMorph extends CanvasChildMorph {
   }
 
   drawSelf() {
+    console.log(this.toString(), 'drawSelf');
     this.context.beginPath();
     this.#shape.draw(this.context);
     this.#style.draw(this.context);
+  }
+
+  toString() {
+    return `#<${this.constructor.name}:0x${this.hexId} style=${this.style} shape=${this.shape}>`;
   }
 }
