@@ -460,7 +460,11 @@ export class HTMLClassListMorph extends Morph {
   #classes;
   constructor(parent, classes) {
     super(parent);
-    this.#classes = classes;
+    if (typeof classes === "string") {
+      this.#classes = classes.split(" ");
+    } else {
+      this.#classes = classes;
+    }
   }
 
   get element() { return this.parent.parent.element }
@@ -554,7 +558,6 @@ export class HTMLAttributeListMorph extends Morph {
 
     let classList = attributes.class ?? [];
     delete attributes.class;
-    if (typeof classList === "string") this.#classList = classList.split(" ");
     this.#classList = new HTMLClassListMorph(this, classList);
     this.#children.push(this.#classList);
   }
