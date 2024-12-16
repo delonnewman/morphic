@@ -119,19 +119,13 @@ function hashCombine(seed, hash) {
     return seed
 }
 
-const MORPH_HASH_CODE_SYMBOL = Symbol.for('#Morphic.cachedHashCode');
-
 Array.prototype.extend(Equatable, Hashable, Inspectable, {
   inspect() {
     return `[${this.map((item) => item.inspect()).join(", ")}]`;
   },
 
   hashCode() {
-    if (!this[MORPHIC_HASH_CODE_SYMBOL]) {
-      this[MORPHIC_HASH_CODE_SYMBOL] = this.reduce((hash, item) => hashCombine(hash, item.hashCode()));
-    }
-
-    return this[MORPHIC_HASH_CODE_SYMBOL];
+      return this.reduce((hash, item) => hashCombine(hash, item.hashCode()));
   },
 
   isEqual(other) {
@@ -725,6 +719,20 @@ export class HTML2DCanvasMorph extends HTMLElementMorph {
     super.initialize();
     this.#context = this.element.getContext('2d');
   }
+
+  clear() {
+    console.log('clearing');
+    this.context.clearRect(0, 0, this.element.width, this.element.height);
+  }
+
+  redraw(child) {
+    this.clear();
+    this.draw();
+  }
+
+  drawSelf() {
+    this.clear();
+  }
 }
 
 export class CanvasChildMorph extends Morph {
@@ -996,6 +1004,10 @@ export class StyleCombination extends Style {
 
   draw(context) {
     this.#styles.forEach((style) => { style.draw(context) })
+  }
+
+  toString() {
+    return `#<${this.constructor.name}:${this.hashCode()} ${this.#styles.inspect()}>`;
   }
 }
 
