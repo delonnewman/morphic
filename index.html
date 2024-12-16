@@ -34,17 +34,29 @@
          const fillGreen = new FillColor('green');
          const strokeRed = new StrokeColor('red');
          const stroke15 = new StrokeWidth(15);
+         const stroke20 = new StrokeWidth(20);
 
-         const RectangleControl = {
-             blue: false,
-             update(morph) {
-                 rect.style = this.blue ? fillGreen : fillBlue;
-             }
-         };
+         const UpControl = { update(morph) { rect.moveUp(5) } };
+         const DownControl = { update(morph) { rect.moveDown(5) } };
+         const RightControl = { update(morph) { rect.moveRight(5) } };
+         const LeftControl = { update(morph) { rect.moveLeft(5) } };
 
-         body.createElement('button', { type: 'button' })
-             .withText('Rectangle')
-             .observeEvent('click', RectangleControl);
+         const controls = body.createElement('div', { class: 'controls' });
+         controls.createElement('button', { type: 'button' })
+             .withText('Up')
+             .observeEvent('click', UpControl);
+
+         controls.createElement('button', { type: 'button' })
+             .withText('Down')
+             .observeEvent('click', DownControl);
+
+         controls.createElement('button', { type: 'button' })
+             .withText('Right')
+             .observeEvent('click', RightControl);
+
+         controls.createElement('button', { type: 'button' })
+             .withText('Left')
+             .observeEvent('click', LeftControl);
 
          const canvas = body.createElement('div')
                             .addChild(HTML2DCanvasMorph, { width: 500, height: 500 });
@@ -58,7 +70,7 @@
          const circle = canvas.addChild(
              CanvasShapeMorph,
              new Circle(new Position(25, 80), 25),
-             new StyleCombination(strokeRed, new StrokeWidth(20), fillBlue),
+             new StyleCombination(strokeRed, stroke20, fillBlue),
          );
 
          body.draw();

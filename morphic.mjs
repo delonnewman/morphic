@@ -742,6 +742,8 @@ export class ValueObject extends BaseObject {
 }
 
 export class Position extends ValueObject {
+
+
   #x;
   #y;
   constructor(x, y) {
@@ -755,6 +757,28 @@ export class Position extends ValueObject {
 
   hashCode() {
     return hashCombine(this.#x.hashCode(), this.#y.hashCode());
+  }
+
+  isEqual(other) {
+    if (!(other instanceof Position)) return false;
+
+    return this.x.isEqual(other.x) && this.y.isEqual(other.y);
+  }
+
+  right(amount) {
+    return new Position(this.x + amount, this.y);
+  }
+
+  left(amount) {
+    return new Position(this.x - amount, this.y);
+  }
+
+  up(amount) {
+    return new Position(this.x, this.y - amount);
+  }
+
+  down(amount) {
+    return new Position(this.x, this.y + amount);
   }
 
   inspect() {
@@ -781,6 +805,26 @@ export class Shape extends ValueObject {
 
   morph(parent, style = this.constructor.defaultStyle()) {
     return new CanvasShapeMorph(parent, this, style);
+  }
+
+  right(amount) {
+    return this.withPosition(this.position.right(amount));
+  }
+
+  left(amount) {
+    return this.withPosition(this.position.left(amount));
+  }
+
+  up(amount) {
+    return this.withPosition(this.position.up(amount));
+  }
+
+  down(amount) {
+    return this.withPosition(this.position.down(amount));
+  }
+
+  withPosition(position, ...args) {
+    return new this.constructor(position, ...args);
   }
 
   toString() {
@@ -928,14 +972,33 @@ export class CanvasShapeMorph extends CanvasChildMorph {
     this.#style = style;
   }
 
+  get shape() { return this.#shape }
   set shape(shape) {
     this.#shape = shape
     this.parent.redraw(this);
+    this.drawSelf();
   }
 
+  get style() { return this.#style }
   set style(style) {
     this.#style = style;
     this.parent.redraw(this)
+  }
+
+  moveRight(amount) {
+    this.shape = this.shape.right(amount);
+  }
+
+  moveLeft(amount) {
+    this.shape = this.shape.left(amount);
+  }
+
+  moveUp(amount) {
+    this.shape = this.shape.up(amount);
+  }
+
+  moveDown(amount) {
+    this.shape = this.shape.down(amount);
   }
 
   drawSelf() {
