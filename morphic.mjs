@@ -720,18 +720,19 @@ export class HTML2DCanvasMorph extends HTMLElementMorph {
     this.#context = this.element.getContext('2d');
   }
 
-  clear() {
+  reset() {
     console.log('clearing');
+    // clear canvas
     this.context.clearRect(0, 0, this.element.width, this.element.height);
   }
 
   redraw(child) {
-    this.clear();
+    this.reset();
     this.draw();
   }
 
   drawSelf() {
-    this.clear();
+    this.reset();
   }
 }
 
@@ -837,7 +838,11 @@ export class Shape extends ValueObject {
   }
 
   translateTo(position) {
-    throw new NotImplementedError('translateTo');
+    return new TranslatedShape(this, position);
+  }
+
+  rotate(degrees) {
+    return new RotatedShape(this, degrees);
   }
 
   draw(context) {
@@ -846,6 +851,57 @@ export class Shape extends ValueObject {
 
   toString() {
     return `#<${this.constructor.name}:${this.hashCode()} @ ${this.position.inspect()}>`;
+  }
+}
+
+export class TranslatedShape extends Shape {
+  #shape;
+  #position;
+  constructor(shape, position) {
+    super(position);
+    this.#shape = shape;
+  }
+
+  hashCode() {
+    return hashCombine(this.#shape.hashCode(), this.position.hashCode());
+  }
+
+  translateTo(position) {
+    return new TranslatedShape(this.#shape, position);
+  }
+
+  draw(context) {
+    context.translate(this.position.x, this.position.y);
+    this.#shape.draw(context);
+  }
+
+  toString() {
+    return `#<${this.constructor.name} ${this.#shape} to ${this.position.inspect()}>`;
+  }
+}
+
+export class RotatedShape extends Shape {
+  #shape;
+  #degrees;
+  constructor(shape, degrees) {
+    super(shape.position);
+    this.#shape = shape;
+    this.#degrees = degrees;
+  }
+
+  hashCode() {
+    return hashCombine(this.#shape.hashCode(), this.#degrees.hashCode());
+  }
+
+  draw(context) {
+    context.rotate((this.#degrees * Math.PI) / 180);
+    this.#shape.draw(context);
+    // set transformation matrix to the identity matrix
+    context.setTransform(1, 0, 0, 1, 0, 0);
+  }
+
+  toString() {
+    return `#<${this.constructor.name} ${this.#degrees.inspect()}° ${this.#shape}>`;
   }
 }
 
@@ -865,10 +921,6 @@ export class Rectangle extends Shape {
   get width() { return this.#width }
   get height() { return this.#height }
 
-  translateTo(position) {
-    return new this.constructor(position, this.width, this.height);
-  }
-
   hashCode() {
     return hashCombine(
       hashCombine(this.position.hashCode(), this.width.hashCode()),
@@ -882,7 +934,7 @@ export class Rectangle extends Shape {
   }
 
   toString() {
-    return `#<${this.constructor.name}:${this.hashCode()} width=${this.width} height=${this.height} @ ${this.position.inspect()}>`;
+    return `#<${this.constructor.name} width=${this.width} height=${this.height} @ ${this.position.inspect()}>`;
   }
 }
 
@@ -903,16 +955,12 @@ export class Circle extends Shape {
     return hashCombine(this.position.hashCode(), this.radius.hashCode());
   }
 
-  translateTo(position) {
-    return new this.constructor(position, this.radius);
-  }
-
   draw(context) {
     context.arc(this.position.x, this.position.y, this.radius, 0, 2 * Math.PI);
   }
 
   toString() {
-    return `#<${this.constructor.name}:${this.hashCode()} radius=${this.radius} @ ${this.position.inspect()}>`;
+    return `#<${this.constructor.name} radius=${this.radius} @ ${this.position.inspect()}>`;
   }
 }
 
@@ -941,7 +989,7 @@ export class FillColor extends Style {
   }
 
   toString() {
-    return `#<${this.constructor.name}:${this.hashCode()} color=${this.color}>`;
+    return `#<${this.constructor.name} ${this.color}>`;
   }
 }
 
@@ -964,7 +1012,7 @@ export class StrokeColor extends Style {
   }
 
   toString() {
-    return `#<${this.constructor.name}:${this.hashCode()} ${this.color}>`;
+    return `#<${this.constructor.name} ${this.color}>`;
   }
 }
 
@@ -987,7 +1035,7 @@ export class StrokeWidth extends Style {
   }
 
   toString() {
-    return `#<${this.constructor.name}:${this.hashCode()} ${this.width}>`;
+    return `#<${this.constructor.name} ${this.width}>`;
   }
 }
 
@@ -999,7 +1047,7 @@ export class StyleCombination extends Style {
   }
 
   hashCode() {
-    this.#styles.hashCode();
+    return this.#styles.hashCode();
   }
 
   draw(context) {
@@ -1007,7 +1055,7 @@ export class StyleCombination extends Style {
   }
 
   toString() {
-    return `#<${this.constructor.name}:${this.hashCode()} ${this.#styles.inspect()}>`;
+    return `#<${this.constructor.name} ${this.#styles.inspect()}>`;
   }
 }
 
@@ -1047,6 +1095,10 @@ export class CanvasShapeMorph extends CanvasChildMorph {
 
   moveDown(amount) {
     this.shape = this.shape.down(amount);
+  }
+
+  rotate(degrees) {
+    this.shape = this.shape.rotate(degrees);
   }
 
   drawSelf() {

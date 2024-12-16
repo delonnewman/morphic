@@ -39,6 +39,7 @@
          const DownControl = { update(morph) { rect.moveDown(5) } };
          const RightControl = { update(morph) { rect.moveRight(5) } };
          const LeftControl = { update(morph) { rect.moveLeft(5) } };
+         const RotateControl = { update(morph) { rect.rotate(15) } };
 
          const controls = body.createElement('div', { class: 'controls' });
          controls.createElement('button', { type: 'button' })
@@ -56,6 +57,10 @@
          controls.createElement('button', { type: 'button' })
              .withText('Left')
              .observeEvent('click', LeftControl);
+
+         controls.createElement('button', { type: 'button' })
+             .withText('Rotate')
+             .observeEvent('click', RotateControl);
 
          const canvas = body.createElement('div')
                             .addChild(HTML2DCanvasMorph, { width: 500, height: 500 });
