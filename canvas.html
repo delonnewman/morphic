@@ -1,0 +1,83 @@
+<html>
+    <head>
+        <script type="module">
+         import {
+             HTMLDocumentBodyMorph,
+             HTMLElementMorph,
+             HTML2DCanvasMorph,
+             CanvasShapeMorph,
+             Position,
+             Rectangle,
+             Circle,
+             FillColor,
+             StrokeColor,
+             StrokeWidth,
+             StyleCombination,
+         } from '/morphic.mjs';
+
+         const ClickObserver = {
+             you: false,
+             update(morph) {
+                 this.you = !this.you;
+                 morph.children[0].value = this.you ? "Hey You!" : "Hey!";
+                 morph.attributes.update('href', this.you ? '#hey-you' : '#hey')
+             }
+         }
+
+         const body = new HTMLDocumentBodyMorph()
+         body.createElement('a', { href: '#' })
+             .withText("Hey!")
+             .observeEvent('click', ClickObserver);
+
+         const fillBlue = new FillColor('blue');
+         const fillGreen = new FillColor('green');
+         const strokeRed = new StrokeColor('red');
+         const stroke15 = new StrokeWidth(15);
+         const stroke20 = new StrokeWidth(20);
+
+         const UpControl = { update(morph) { rect.moveUp(5) } };
+         const DownControl = { update(morph) { rect.moveDown(5) } };
+         const RightControl = { update(morph) { rect.moveRight(5) } };
+         const LeftControl = { update(morph) { rect.moveLeft(5) } };
+         const RotateControl = { update(morph) { rect.rotate(15) } };
+
+         const controls = body.createElement('div', { class: 'controls' });
+         controls.createElement('button', { type: 'button' })
+             .withText('Up')
+             .observeEvent('click', UpControl);
+
+         controls.createElement('button', { type: 'button' })
+             .withText('Down')
+             .observeEvent('click', DownControl);
+
+         controls.createElement('button', { type: 'button' })
+             .withText('Right')
+             .observeEvent('click', RightControl);
+
+         controls.createElement('button', { type: 'button' })
+             .withText('Left')
+             .observeEvent('click', LeftControl);
+
+         controls.createElement('button', { type: 'button' })
+             .withText('Rotate')
+             .observeEvent('click', RotateControl);
+
+         const canvas = body.createElement('div')
+                            .addChild(HTML2DCanvasMorph, { width: 500, height: 500 });
+
+         const rect = canvas.addChild(
+            CanvasShapeMorph,
+            new Rectangle(new Position(0, 0), 50, 50),
+            fillGreen,
+         );
+
+         const circle = canvas.addChild(
+             CanvasShapeMorph,
+             new Circle(new Position(25, 80), 25),
+             new StyleCombination(strokeRed, stroke20, fillBlue),
+         );
+
+         body.draw();
+        </script>
+    </head>
+</html>
