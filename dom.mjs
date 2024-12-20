@@ -159,6 +159,7 @@ export class HTMLElementMorph extends Morph {
   #children;
   #eventObservers;
   #element;
+  #builder;
   constructor(parent, tagName, attributes = {}, children = []) {
     super(parent);
     this.#tagName = tagName;
@@ -187,7 +188,7 @@ export class HTMLElementMorph extends Morph {
     this.#eventObservers[event] ??= [];
     this.#eventObservers[event].push(...observers);
     if (this.isInitialized()) {
-      this.#enableObservers(event, observers);
+      this.#enableEventObservers(event, observers);
     }
     return this;
   }
@@ -200,8 +201,13 @@ export class HTMLElementMorph extends Morph {
   }
 
   add(unboundMorph) {
-    this.children.push(unboundMorph);
-    return this;
+    const morph = unboundMorph.bind(this)
+    this.children.push(morph);
+    return morph;
+  }
+
+  tag(...args) {
+    return this.add(HTMLElementMorph.tag(...args));
   }
 
   replaceChildren(...children) {
@@ -241,7 +247,8 @@ export class HTMLElementMorph extends Morph {
 
   initialize() {
     const element = this.#element = document.createElement(this.tagName);
-    this.#enableAllObservers();
+    this.#enableAllEventObservers();
+    this.#enableContentObservers();
 
     this.parent.element.append(element);
   }
@@ -251,14 +258,45 @@ export class HTMLElementMorph extends Morph {
     this.#attributes.draw();
   }
 
-  #enableAllObservers() {
-    this.events.forEach((eventName) => {
-      const observers = this.#eventObservers[eventName];
-      this.#enableObservers(eventName, observers);
+  observeWith(...observers) {
+    const notObserved = !this.isObserved();
+    super.observeWith(...observers);
+    if (notObserved && this.isInitialized()) {
+      this.#enableContentObservers();
+    }
+    return this;
+  }
+
+  updateContent(content) {
+    if (content instanceof HTMLElementMorph) {
+      this.replaceChildren(content);
+    } else {
+      this.element.innerHTML = content.display().toHTML();
+    }
+    this.notifyObservers();
+  }
+
+  #enableContentObservers() {
+    if (!this.isObserved()) return;
+
+    console.debug('enablingContentObservers on', this.element);
+    const observer = new MutationObserver((mutation) => { this.notifyObservers() });
+    observer.observe(this.element, {
+      attributes: true,
+      childList: true,
+      subtree: true,
+      characterData: true
     });
   }
 
-  #enableObservers(eventName, observers) {
+  #enableAllEventObservers() {
+    this.events.forEach((eventName) => {
+      const observers = this.#eventObservers[eventName];
+      this.#enableEventObservers(eventName, observers);
+    });
+  }
+
+  #enableEventObservers(eventName, observers) {
     observers.forEach((observer) => {
       this.#element.addEventListener(eventName, this.#listenerForObserver(observer));
     });
@@ -289,25 +327,9 @@ export class ExistingHTMLElementMorph extends HTMLElementMorph {
 
   drawSelf() {  }
 
-  updateContent(content) {
-    if (content instanceof HTMLElementMorph) {
-      this.replaceChildren(content);
-    } else {
-      this.element.innerHTML = content.display().toHTML();
-    }
-    this.notifyObservers();
-  }
-
   initialize() {
     this.element.setAttribute('data-morph-id', this.elementId);
-
-    const observer = new MutationObserver((mutation) => { this.notifyObservers() });
-    observer.observe(this.element, {
-      attributes: true,
-      childList: true,
-      subtree: true,
-      characterData: true
-    });
+    super.initialize();
   }
 }
 
