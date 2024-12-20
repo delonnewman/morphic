@@ -32,14 +32,14 @@
          }
 
          const body = Morphic.HTMLDocumentBodyMorph.new();
-         const nav = tag('nav', { class: 'navbar navbar-light bg-light' })
+         body.tag('nav', { class: 'navbar navbar-light bg-light' })
              .tag('div', { class: 'container-fluid' })
-             .tag('span', { class: 'navbar-brand mb-0 h1' }, "Morphic!")
-             .bind(body)
-         nav.draw();
+             .tag('span', { class: 'navbar-brand mb-0 h1' }, "Morphic!");
 
-         const editor = body.addExisting('#code-editor');
-         const result = body.addExisting('#code-result').observe(editor);
+         const panes = body.tag('div', { class: 'row align-items-stretch', style: 'min-height: 500px' });
+         const editor = panes.tag('pre', { id: 'code-editor', class: 'col-md-6 border rounded m-0', contenteditable: true, spellcheck: false });
+         const result = panes.tag('pre', { id: 'code-result', class: 'col-md-6', style: 'white-space: pre-wrap' }).observe(editor);
+
          result.update = function (editor) {
              try {
                  this.updateContent(Morphic.objectOf(eval(editor.element.innerText)));
@@ -48,12 +48,14 @@
                  this.updateContent(error);
              }
          };
+
+         body.draw();
         </script>
-        <body class="container-fluid">
-            <div class="row align-items-stretch" style="min-height: 500px">
-                <pre id="code-editor" class="col-md-6 border rounded m-0" contenteditable="true" spellcheck="false"></pre>
-                <pre id="code-result" class="col-md-6" style="white-space: pre-wrap;"></pre>
-            </div>
+        <body>
+            <!-- <div class="row align-items-stretch" style="min-height: 500px">
+                 <pre id="code-editor" class="col-md-6 border rounded m-0" contenteditable="true" spellcheck="false"></pre>
+                 <pre id="code-result" class="col-md-6" style="white-space: pre-wrap;"></pre>
+                 </div> -->
         </body>
     </head>
 </html>
