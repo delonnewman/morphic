@@ -191,6 +191,12 @@ export class HTMLElementMorph extends Morph {
     return morph;
   }
 
+  replaceChildren(...children) {
+    this.#children = children;
+    if (this.isInitialized()) { this.parent.redraw(this) }
+    return this;
+  }
+
   createElement(tagName, attributes = {}, children = []) {
     return this.addChild(HTMLElementMorph, tagName, attributes, children);
   }
@@ -271,7 +277,11 @@ export class ExistingHTMLElementMorph extends HTMLElementMorph {
   drawSelf() {  }
 
   updateContent(content) {
-    this.element.innerHTML = content.display();
+    if (content instanceof HTMLElementMorph) {
+      this.replaceChildren(content);
+    } else {
+      this.element.innerHTML = content.display();
+    }
     this.notifyObservers();
   }
 
