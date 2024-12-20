@@ -370,6 +370,12 @@ Object.prototype.extend(Base, {
   },
 });
 
+Error.prototype.extend({
+  display() {
+    return `${this.constructor.name}: ${this.message}: ${this.stack}`;
+  }
+});
+
 function hashCombine(seed, hash) {
     // a la boost, a la clojure
     seed ^= hash + 0x9e3779b9 + (seed << 6) + (seed >> 2)
