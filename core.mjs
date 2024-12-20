@@ -1,6 +1,10 @@
 import { BaseObject, objectOf, Null } from './base.mjs';
 
 export class Morph extends BaseObject {
+  static build(...args) {
+    return UnboundMorph.new(this, args);
+  }
+
   #parent;
   #initialized;
   #observers;
@@ -17,6 +21,16 @@ export class Morph extends BaseObject {
 
   update(morph, ..._args) { }
 
+  isBound() {
+    return true;
+  }
+
+  isUnbound() { return !this.isBound() }
+
+  bind(_parent) {
+    return this;
+  }
+
   observe(morph) {
     morph.observeWith(this);
     return this;
@@ -24,7 +38,7 @@ export class Morph extends BaseObject {
 
   observeWith(...observers) {
     this.observers.push(...observers);
-    console.log('observing', this.toString(), 'with', this.observers);
+    console.debug('observing', this.toString(), 'with', this.observers);
     return this;
   }
 
@@ -33,14 +47,14 @@ export class Morph extends BaseObject {
   notifyObservers() {
     if (!this.isObserved()) return;
 
-    console.log('notifying observers', this.toString(), this.observers);
+    console.debug('notifying observers', this.toString(), this.observers);
     this.observers.forEach((observer) => {
       observer.update(this);
     });
   }
 
   draw() {
-    console.log('drawing', this.toString());
+    console.debug('drawing', this.toString());
     if (!this.isInitialized()) {
       this.initialize();
       this.#initialized = true;
@@ -119,5 +133,43 @@ export class AtomicMorph extends Morph {
   swap(fn) {
     this.value = fn(this.value);
     return this;
+  }
+}
+
+class UnboundMorph extends Morph {
+  #morphClass;
+  #args;
+  #children;
+  constructor(morphClass, args) {
+    super(NullMorph);
+    this.#morphClass = morphClass;
+    this.#args = args;
+    this.#children = [];
+  }
+
+  isBound() {
+    return false;
+  }
+
+  add(...children) {
+    this.#children.push(...children);
+    return this;
+  }
+
+  bind(parent) {
+    const morph = this.#morphClass.new(parent, ...this.#args);
+    console.debug('binding', this.toString(), 'to', parent.toString());
+    this.#children.forEach((child) => {
+      morph.add(child.bind(morph));
+    });
+    return morph;
+  }
+
+  draw() {
+    throw new Error('cannot draw UnboundMorph');
+  }
+
+  toString() {
+    return `#<${this.constructor.name} class=${this.#morphClass} arguments=${this.#args.inspect()} children=${this.#children.inspect()}>`;
   }
 }

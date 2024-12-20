@@ -16,7 +16,7 @@ export class HTML2DCanvasMorph extends HTMLElementMorph {
   }
 
   reset() {
-    console.log('clearing');
+    console.debug('clearing');
     // clear canvas
     this.context.clearRect(0, 0, this.element.width, this.element.height);
   }
@@ -395,7 +395,7 @@ export class CanvasShapeMorph extends CanvasChildMorph {
   }
 
   drawSelf() {
-    console.log(this.toString(), 'drawSelf');
+    console.debug(this.toString(), 'drawSelf');
     this.context.beginPath();
     this.#shape.draw(this.context);
     this.#style.draw(this.context);

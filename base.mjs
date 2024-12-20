@@ -26,6 +26,10 @@ export const Inspectable = {
     return this.inspect();
   },
 
+  toHTML() {
+    return this.display();
+  },
+
   [DENO_CUSTOM_INSPECT_SYMBOL]() { return this.inspect() },
   [NODE_CUSTOM_INSPECT_SYMBOL]() { return this.inspect() },
 };
@@ -251,8 +255,12 @@ export class BaseObject {
     this.extend(Base);
   }
 
-  static toString() {
+  static inspect() {
     return `#<Class ${this.name}>`;
+  }
+
+  static toString() {
+    return this.name;
   }
 
   static get mirror() {
@@ -268,18 +276,6 @@ export class BaseObject {
 
   static allocate() {
     return new this();
-  }
-
-  static of(entries) {
-    const properties = ['objectId', ...Object.getOwnPropertyNames(this.prototype)];
-    const object = this.allocate();
-    for (const [property, value] of entries.toArray()) {
-      if (properties.includes(property) && this.mirror.isInstanceProperty(property)) {
-        console.log(property, value);
-        this.eval(`object.#${property} = value`);
-      }
-    }
-    return object;
   }
 
   #objectId;
@@ -745,7 +741,7 @@ function stringHash(str) {
 
 String.prototype.extend(Equatable, Hashable, Inspectable, {
   display() {
-    return `"${this}"`;
+    return this;
   },
 
   inspect() {
@@ -782,6 +778,22 @@ String.prototype.extend(Equatable, Hashable, Inspectable, {
       array.push(this.codePointAt(i));
     }
     return array;
+  },
+
+  charCodes() {
+    const array = []
+    for (let i = 0; i < this.length; i++) {
+      array.push(this.charCodeAt(i));
+    }
+    return array;
+  },
+
+  toHTML() {
+    const buffer = []
+    for (let i = 0; i < this.length; i++) {
+      buffer.push(`&#${this.charCodeAt(i)};`);
+    }
+    return buffer.join('');
   },
 
   succ() {

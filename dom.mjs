@@ -1,4 +1,4 @@
-import { EMPTY_ARRAY } from './base.mjs';
+import { EMPTY_ARRAY, BaseObject, objectOf } from './base.mjs';
 import { AtomicMorph, NullMorph, Morph } from './core.mjs';
 
 export class TextNodeMorph extends AtomicMorph {
@@ -146,6 +146,14 @@ export class HTMLAttributeListMorph extends Morph {
 }
 
 export class HTMLElementMorph extends Morph {
+  static tag(name, ...args) {
+    const firstAttrs = !(args[0] instanceof Morph);
+    const attributes = firstAttrs ? args[0] : {};
+    const children = (firstAttrs ? args.drop(1) : args).map((child) => child instanceof Morph ? child : TextNodeMorph.build(child.display()));
+
+    return this.build(name, attributes).add(...children);
+  }
+
   #tagName;
   #attributes;
   #children;
@@ -191,6 +199,11 @@ export class HTMLElementMorph extends Morph {
     return morph;
   }
 
+  add(unboundMorph) {
+    this.children.push(unboundMorph);
+    return this;
+  }
+
   replaceChildren(...children) {
     this.#children = children;
     if (this.isInitialized()) { this.parent.redraw(this) }
@@ -234,7 +247,7 @@ export class HTMLElementMorph extends Morph {
   }
 
   drawSelf() {
-    console.log('drawing self', this.toString(), this.element);
+    console.debug('drawing self', this.toString(), this.element);
     this.#attributes.draw();
   }
 
@@ -280,7 +293,7 @@ export class ExistingHTMLElementMorph extends HTMLElementMorph {
     if (content instanceof HTMLElementMorph) {
       this.replaceChildren(content);
     } else {
-      this.element.innerHTML = content.display();
+      this.element.innerHTML = content.display().toHTML();
     }
     this.notifyObservers();
   }
@@ -314,4 +327,39 @@ export class HTMLDocumentBodyMorph extends HTMLElementMorph {
 
   isInitialized() { return true }
   get element() { return document.body }
+}
+
+export class HTMLMorphBuilder extends BaseObject {
+  static tag(...args) {
+    const morph = HTMLElementMorph.tag(...args);
+    return this.new(morph);
+  }
+
+  #parent;
+  constructor(parent) {
+    super();
+    this.#parent = parent;
+  }
+
+  tag(...args) {
+    const morph = HTMLElementMorph.tag(...args);
+    this.#parent.add(morph);
+    return this;
+  }
+
+  text(content) {
+    const morph = TextNodeMorph.build(content);
+    this.#parent.add(morph);
+    return this;
+  }
+
+  isBound() { return false }
+  bind(parent) {
+    return this.#parent.bind(parent);
+  }
+}
+
+export function tag(...args) {
+  const morph = HTMLElementMorph.tag(...args);
+  return HTMLMorphBuilder.new(morph);
 }
