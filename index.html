@@ -19,17 +19,17 @@
          const result = body.addExisting('#code-result').withText("").observe(editor);
          result.update = function (editor) {
              try {
-                 this.children[0].value = Morphic.objectOf(eval(editor.element.innerText)).display();
+                 this.updateContent(Morphic.objectOf(eval(editor.element.innerText)));
              } catch (error) {
                  console.error(error);
-                 this.children[0].value = error.message;
+                 this.updateContent(error);
              }
          };
         </script>
         <body class="container-fluid">
             <div class="row align-items-stretch" style="min-height: 500px">
-                <pre id="code-editor" class="col border m-0" contenteditable="true" spellcheck="false">[{ name: 'Jackie', likes: 'Drawing' }]</pre>
-                <pre id="code-result" class="col border text-muted"></pre>
+                <pre id="code-editor" class="col-md-6 border rounded m-0" contenteditable="true" spellcheck="false"></pre>
+                <pre id="code-result" class="col-md-6" style="white-space: pre-wrap;"></pre>
             </div>
         </body>
     </head>
