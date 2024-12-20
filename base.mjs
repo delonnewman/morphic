@@ -569,8 +569,57 @@ Date.prototype.extend(Equatable, Hashable, Inspectable, {
 
   toData() {
     return this;
-  }
+  },
 });
+
+export class CalendarDate extends BaseObject {
+  static today() {
+    const now = new Date();
+    return new this(now.getFullYear(), now.getMonth() + 1, now.getDate());
+  }
+
+  static yesterday() {
+    return this.today().pred();
+  }
+
+  #year;
+  #month;
+  #date;
+  constructor(year, month, date) {
+    super();
+    this.#year = year;
+    this.#month = month;
+    this.#date = date;
+  }
+
+  get year() { return this.#year }
+  get month() { return this.#month }
+  get date() { return this.#date }
+
+  isEqual(other) {
+    return this.year === other.year && this.month === other.month && this.date === other.date;
+  }
+
+  succ() {
+    return this.plus(1);
+  }
+
+  plus(amount) {
+    return new this.constructor(this.year, this.month, this.date + amount);
+  }
+
+  pred() {
+    return this.minus(1);
+  }
+
+  minus(amount) {
+    return new this.constructor(this.year, this.month, this.date - amount);
+  }
+
+  toString() {
+    return `#<${this.constructor.name} ${this.year}-${this.month.toString().padStart(2, '0')}-${this.date.toString().padStart(2, '0')}>`;
+  }
+}
 
 RegExp.prototype.extend(Equatable, Hashable, Inspectable);
 Function.prototype.extend(Equatable, Inspectable);
@@ -608,6 +657,30 @@ Number.prototype.extend(Equatable, Hashable, Inspectable, {
     }
 
     return false;
+  },
+
+  succ() {
+    return this.plus(1);
+  },
+
+  pred() {
+    return this.minus(2);
+  },
+
+  plus(other) {
+    return this + other;
+  },
+
+  minus(other) {
+    return this - other;
+  },
+
+  div(other) {
+    return this / other;
+  },
+
+  mult(other) {
+    return this * other;
   },
 });
 
@@ -696,8 +769,72 @@ String.prototype.extend(Equatable, Hashable, Inspectable, {
     }
 
     return false;
-  }
+  },
+
+  codePoints() {
+    const array = []
+    for (let i = 0; i < this.length; i++) {
+      array.push(this.codePointAt(i));
+    }
+    return array;
+  },
+
+  succ() {
+    const points = this.codePoints();
+    points[points.length - 1] += 1;
+    return this.constructor.fromCodePointArray(points);
+  },
+
+  pred() {
+    const points = this.codePoints();
+    points[points.length - 1] -= 1;
+    return this.constructor.fromCodePointArray(points);
+  },
 });
+
+String.fromCodePointArray = function(array) {
+  return array.map((point) => this.fromCodePoint(point)).join('');
+};
+
+export class Range extends BaseObject {
+  #begin;
+  #end;
+  constructor(begin, end) {
+    super();
+    this.#begin = begin;
+    this.#end = end;
+  }
+
+  get begin() { return this.#begin }
+  get end() { return this.#end }
+
+  forEach(fn) {
+    let x = this.begin;
+    fn(x);
+    do {
+      x = x.succ();
+      fn(x);
+    } while (x.isEqual(this.end));
+  }
+
+  map(fn) {
+    const array = [];
+    this.forEach((it) => { array.push(fn(it)) });
+    return array;
+  }
+
+  toArray() {
+    const array = [];
+    this.forEach(array.push.bind(array));
+    return array;
+  }
+
+  reverse() {
+    const array = [];
+    this.forEach(array.unshift.bind(array));
+    return array;
+  }
+}
 
 // A default Null object
 function NullBase(value){
