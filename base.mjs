@@ -321,7 +321,7 @@ export class BaseObject {
   }
 
   toData() {
-    const data = new Map([['objectId', this.objectId]]);
+    const data = new Map([['objectId', this.objectId], ['className', this.constructor.name]]);
     const keys = Object.getOwnPropertyNames(this.constructor.prototype);
     for (const key of keys) {
       const value = this[key];
@@ -562,7 +562,7 @@ Set.prototype.extend(Equatable, Hashable, Inspectable, Associative, {
   },
 });
 
-Date.prototype.extend(Equatable, Hashable, Inspectable, {
+globalThis.Date.prototype.extend(Equatable, Hashable, Inspectable, {
   hashCode() {
     return this.valueOf();
   },
@@ -572,14 +572,17 @@ Date.prototype.extend(Equatable, Hashable, Inspectable, {
   },
 });
 
-export class CalendarDate extends BaseObject {
+export class Date extends BaseObject {
   static today() {
-    const now = new Date();
-    return new this(now.getFullYear(), now.getMonth() + 1, now.getDate());
+    return this.from(new globalThis.Date());
   }
 
   static yesterday() {
     return this.today().pred();
+  }
+
+  static from(date) {
+    return new this(date.getFullYear(), date.getMonth() + 1, date.getDate());
   }
 
   #year;
