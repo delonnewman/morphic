@@ -11,12 +11,10 @@
 
         <script type="module">
          import * as Morphic from './morphic.mjs';
-         console.log(Morphic);
 
          const body = Morphic.HTMLDocumentBodyMorph.new();
-
          const editor = body.addExisting('#code-editor');
-         const result = body.addExisting('#code-result').withText("").observe(editor);
+         const result = body.addExisting('#code-result').observe(editor);
          result.update = function (editor) {
              try {
                  this.updateContent(Morphic.objectOf(eval(editor.element.innerText)));
