@@ -270,12 +270,21 @@ export class ExistingHTMLElementMorph extends HTMLElementMorph {
 
   drawSelf() {  }
 
+  updateContent(content) {
+    this.element.innerHTML = content.display();
+    this.notifyObservers();
+  }
+
   initialize() {
-    console.log('initializing', this.toString());
     this.element.setAttribute('data-morph-id', this.elementId);
 
-    const observer = new MutationObserver((mutation) => { console.log('mutation', mutation); this.notifyObservers() });
-    observer.observe(this.element, { attributes: true, childList: true, subtree: true, characterData: true });
+    const observer = new MutationObserver((mutation) => { this.notifyObservers() });
+    observer.observe(this.element, {
+      attributes: true,
+      childList: true,
+      subtree: true,
+      characterData: true
+    });
   }
 }
 
