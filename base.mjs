@@ -20,10 +20,12 @@ export const Inspectable = {
   inspect() {
     return this.toString();
   },
+
   // user display (may be evaluated in an HTML context)
   display() {
     return this.inspect();
   },
+
   [DENO_CUSTOM_INSPECT_SYMBOL]() { return this.inspect() },
   [NODE_CUSTOM_INSPECT_SYMBOL]() { return this.inspect() },
 };
@@ -258,7 +260,7 @@ export class BaseObject {
   }
 
   static new(...args) {
-    if (this.length !== args.length) {
+    if (args.length < this.length) {
       throw new ArgumentError(args.length, this.length);
     }
     return new this(...args);
@@ -278,10 +280,6 @@ export class BaseObject {
       }
     }
     return object;
-  }
-
-  static objectId(object) {
-    return this.#objectId;
   }
 
   #objectId;
@@ -313,6 +311,10 @@ export class BaseObject {
   }
 
   instanceOf(klass) {
+    if (!(typeof klass === 'function')) {
+      return false;
+    }
+
     return this instanceof klass;
   }
 
@@ -802,22 +804,27 @@ String.fromCodePointArray = function(array) {
 export class Range extends BaseObject {
   #begin;
   #end;
-  constructor(begin, end) {
+  #excludeEnd;
+  constructor(begin, end, excludeEnd = false) {
     super();
     this.#begin = begin;
     this.#end = end;
+    this.#excludeEnd = excludeEnd;
   }
 
   get begin() { return this.#begin }
   get end() { return this.#end }
+  get excludeEnd() { return this.#excludeEnd }
 
   forEach(fn) {
     let x = this.begin;
-    fn(x);
-    do {
-      x = x.succ();
+    while (!x.isEqual(this.end)) {
       fn(x);
-    } while (x.isEqual(this.end));
+      x = x.succ();
+    }
+    if (!this.#excludeEnd) {
+      fn(x);
+    }
   }
 
   map(fn) {
@@ -836,6 +843,10 @@ export class Range extends BaseObject {
     const array = [];
     this.forEach(array.unshift.bind(array));
     return array;
+  }
+
+  toString() {
+    return `${this.begin}${this.#excludeEnd ? '...' : '..'}${this.end}`;
   }
 }
 
