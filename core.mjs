@@ -55,15 +55,19 @@ export class Morph extends BaseObject {
 
   draw() {
     console.debug('drawing', this.toString());
+    let initializerExecuted = false;
     if (!this.isInitialized()) {
       this.initialize();
-      this.#initialized = true;
+      initializerExecuted = true;
     }
     this.drawSelf();
     this.children.forEach((child) => {
         child.draw();
     });
-    this.notifyObservers();
+    if (this.isInitialized()) this.notifyObservers();
+    if (!this.isInitialized() && initializerExecuted) {
+      this.#initialized = true;
+    }
   }
 
   get children() {
