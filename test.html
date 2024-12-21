@@ -94,8 +94,17 @@
                  if (this.teardown) this.teardown();
              }
 
+             assertEquals(a, b, memo) {
+                 if (a !== b) {
+                     const msg = `${Morphic.inspect(a)} and ${Morphic.inspect(b)} are not equal`
+                     this.fail(memo ? `${memo} - ${msg}` : msg);
+                 }
+                 this.pass(memo ?? `${Morphic.inspect(a)} and ${Morphic.inspect(b)} are equal`);
+
+             }
+
              assert(value, memo = undefined) {
-                 if (value !== true) { this.fail(memo) }
+                 if (value !== true) this.fail(memo);
                  this.pass(memo);
              }
 
@@ -104,7 +113,7 @@
              }
 
              pass(memo) {
-                 throw new PassedTest(this.#currentTest, memo);
+                 this.assertions.push(new PassedTest(this.#currentTest, memo));
              }
          }
 
@@ -124,9 +133,44 @@
              }
          }
 
-         const tests = [new AssertionsTest()];
+         class DisplayTest extends TestCase {
+             testString() {
+                 this.assertEquals("&#116;&#101;&#115;&#116;", Morphic.display("test"), 'encodes strings as HTML entities');
+             }
+
+             testNull() {
+                 this.assertEquals('-', Morphic.display(null), 'null is displayed as "-"');
+                 this.assertEquals('-', Morphic.display(undefined), 'undefined is displayed as "-"');
+                 this.assertEquals('-', Morphic.display(Morphic.Null), 'Null is displayed as "-"');
+             }
+
+             testBoolean() {
+                 this.assertEquals('Yes', Morphic.display(true), 'true is displayed as "Yes"');
+                 this.assertEquals('No', Morphic.display(false), 'false is displayed as "No"');
+             }
+
+             testError() {
+                 const str = "Error: this is a test: stack"
+                 const error = new Error();
+                 error.message = 'this is a test';
+                 error.stack = 'stack';
+
+                 this.assertEquals(str, Morphic.display(error), 'formats errors');
+             }
+
+             testOthers() {
+                 const object = {
+                     [Morphic.Symbols.customInspect]() {
+                         return "Hey!"
+                     }
+                 }
+
+                 this.assertEquals("Hey!", Morphic.display(object), 'displays other objects with custom inspect method')
+             }
+         }
+
+         const tests = [new AssertionsTest(), new DisplayTest()];
          tests.forEach((test) => { test.prove() });
-         console.log('tests', tests);
 
          const body = Morphic.HTMLDocumentBodyMorph.new();
          body.tag('nav', { class: 'navbar navbar-light bg-light mb-2' })
