@@ -1,39 +1,25 @@
 import * as Morphic from "../lib/morphic.mjs";
+const { display, Null, Symbols } = Morphic;
 
 export class DisplayTest extends Morphic.TestCase {
   testString() {
+    const encoded = "&#116;&#101;&#115;&#116;";
     this.assertEquals(
-      "&#116;&#101;&#115;&#116;",
-      Morphic.display("test"),
+      encoded,
+      display("test"),
       "encodes strings as HTML entities",
     );
   }
 
   testNull() {
-    this.assertEquals("-", Morphic.display(null), 'null is displayed as "-"');
-    this.assertEquals(
-      "-",
-      Morphic.display(undefined),
-      'undefined is displayed as "-"',
-    );
-    this.assertEquals(
-      "-",
-      Morphic.display(Morphic.Null),
-      'Null is displayed as "-"',
-    );
+    this.assertEquals("-", display(null), 'null is displayed as "-"');
+    this.assertEquals("-", display(undefined), 'undefined is displayed as "-"');
+    this.assertEquals("-", display(Null), 'Null is displayed as "-"');
   }
 
   testBoolean() {
-    this.assertEquals(
-      "Yes",
-      Morphic.display(true),
-      'true is displayed as "Yes"',
-    );
-    this.assertEquals(
-      "No",
-      Morphic.display(false),
-      'false is displayed as "No"',
-    );
+    this.assertEquals("Yes", display(true), 'true is displayed as "Yes"');
+    this.assertEquals("No", display(false), 'false is displayed as "No"');
   }
 
   testError() {
@@ -42,19 +28,19 @@ export class DisplayTest extends Morphic.TestCase {
     error.message = "this is a test";
     error.stack = "stack";
 
-    this.assertEquals(str, Morphic.display(error), "formats errors");
+    this.assertEquals(str, display(error), "formats errors");
   }
 
   testOthers() {
     const object = {
-      [Morphic.Symbols.customInspect]() {
+      [Symbols.customInspect]() {
         return "Hey!";
       },
     };
 
     this.assertEquals(
       "Hey!",
-      Morphic.display(object),
+      display(object),
       "displays other objects with custom inspect method",
     );
   }
