@@ -281,7 +281,6 @@ export class HTMLElementMorph extends Morph {
   #enableContentObservers() {
     if (!this.isObserved()) return;
 
-    console.debug('enablingContentObservers on', this.element);
     const observer = new MutationObserver((mutation) => { this.notifyObservers() });
     observer.observe(this.element, {
       attributes: true,
