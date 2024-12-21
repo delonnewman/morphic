@@ -150,7 +150,8 @@ export class HTMLElementMorph extends Morph {
   static tag(name, ...args) {
     const firstAttrs = !(args[0] instanceof Morph);
     const attributes = firstAttrs ? args[0] : {};
-    const children = (firstAttrs ? drop(args, 1) : args).map((child) => child instanceof Morph ? child : TextNodeMorph.build(`${child}`));
+    const children = (firstAttrs ? drop(args, 1) : args)
+          .map((child) => child instanceof Morph ? child : TextNodeMorph.build(`${child}`));
 
     return this.build(name, attributes).add(...children);
   }
