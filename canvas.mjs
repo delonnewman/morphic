@@ -1,6 +1,7 @@
 import { HTMLElementMorph } from './dom.mjs';
 import { NullMorph, Morph } from './core.mjs';
 import { EMPTY_ARRAY, ValueObject } from './base.mjs';
+import { inspect } from './utils.mjs';
 
 export class HTML2DCanvasMorph extends HTMLElementMorph {
   #context;
@@ -79,7 +80,7 @@ export class Position extends ValueObject {
   }
 
   toString() {
-    return `#<${this.constructor.name}:${this.hashCode()} ${this.inspect()}>`;
+    return `#<${this.constructor.name}:${this.hashCode()} ${inspect(this)}>`;
   }
 }
 
@@ -129,7 +130,7 @@ export class Shape extends ValueObject {
   }
 
   toString() {
-    return `#<${this.constructor.name}:${this.hashCode()} @ ${this.position.inspect()}>`;
+    return `#<${this.constructor.name}:${this.hashCode()} @ ${inspect(this.position)}>`;
   }
 }
 
@@ -155,7 +156,7 @@ export class TranslatedShape extends Shape {
   }
 
   toString() {
-    return `#<${this.constructor.name} ${this.#shape} to ${this.position.inspect()}>`;
+    return `#<${this.constructor.name} ${this.#shape} to ${inspect(this.position)}>`;
   }
 }
 
@@ -180,7 +181,7 @@ export class RotatedShape extends Shape {
   }
 
   toString() {
-    return `#<${this.constructor.name} ${this.#degrees.inspect()}° ${this.#shape}>`;
+    return `#<${this.constructor.name} ${inspect(this.#degrees)}° ${this.#shape}>`;
   }
 }
 
@@ -213,7 +214,7 @@ export class Rectangle extends Shape {
   }
 
   toString() {
-    return `#<${this.constructor.name} width=${this.width} height=${this.height} @ ${this.position.inspect()}>`;
+    return `#<${this.constructor.name} width=${this.width} height=${this.height} @ ${inspect(this.position)}>`;
   }
 }
 
@@ -239,7 +240,7 @@ export class Circle extends Shape {
   }
 
   toString() {
-    return `#<${this.constructor.name} radius=${this.radius} @ ${this.position.inspect()}>`;
+    return `#<${this.constructor.name} radius=${this.radius} @ ${inspect(this.position)}>`;
   }
 }
 
@@ -348,7 +349,7 @@ export class StyleCombination extends Style {
   }
 
   toString() {
-    return `#<${this.constructor.name} ${this.#styles.inspect()}>`;
+    return `#<${this.constructor.name} ${inspect(this.#styles)}>`;
   }
 }
 

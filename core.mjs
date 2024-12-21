@@ -1,4 +1,5 @@
-import { BaseObject, objectOf, Null } from './base.mjs';
+import { BaseObject, Null } from './base.mjs';
+import { inspect, objectOf } from './utils.mjs';
 
 export class Morph extends BaseObject {
   static build(...args) {
@@ -53,7 +54,8 @@ export class Morph extends BaseObject {
     });
   }
 
-  draw() {
+  draw(fn = undefined) {
+    if (fn) fn(this);
     console.debug('drawing', this.toString());
     let initializerExecuted = false;
     if (!this.isInitialized()) {
@@ -113,7 +115,7 @@ export class AtomicMorph extends Morph {
   }
 
   toString() {
-    return `#<${this.constructor.name}:0x${this.hexId} ${this.value.inspect()}>`;
+    return `#<${this.constructor.name}:0x${this.hexId} ${inspect(this.value)}>`;
   }
 
   get value() {
@@ -174,6 +176,6 @@ class UnboundMorph extends Morph {
   }
 
   toString() {
-    return `#<${this.constructor.name} class=${this.#morphClass} arguments=${this.#args.inspect()} children=${this.#children.inspect()}>`;
+    return `#<${this.constructor.name} class=${this.#morphClass} arguments=${inspect(this.#args)} children=${inspect(this.#children)}>`;
   }
 }

@@ -1,3 +1,13 @@
+import {
+  capitalize,
+  booleanNumberCompare,
+  booleanStringCompare,
+  inspect,
+  objectOf,
+  stringHash,
+  Symbols
+} from './utils.mjs';
+
 const DENO_CUSTOM_INSPECT_SYMBOL = Symbol.for("Deno.customInspect");
 const NODE_CUSTOM_INSPECT_SYMBOL = Symbol.for('nodejs.util.inspect.custom');
 
@@ -17,34 +27,41 @@ Object.assign(Object.prototype, {
 
 export const Inspectable = {
   // technical detailed display
-  inspect() {
-    return this.toString();
-  },
+  [Symbols.customInspect]() { return this.toString() },
 
-  // user display (may be evaluated in an HTML context)
-  display() {
-    return this.inspect();
-  },
-
-  toHTML() {
-    return this.display();
-  },
-
-  [DENO_CUSTOM_INSPECT_SYMBOL]() { return this.inspect() },
-  [NODE_CUSTOM_INSPECT_SYMBOL]() { return this.inspect() },
+  [DENO_CUSTOM_INSPECT_SYMBOL]() { return this[Symbols.customInspect]() },
+  [NODE_CUSTOM_INSPECT_SYMBOL]() { return this[Symbols.customInspect]() },
 };
 
-export class NotImplementedError extends Error {
+export class BaseError extends Error {
+  get tag() { return 'Error' }
+}
+
+export class NotImplementedError extends BaseError {
+  // TODO: add object
   constructor(methodName) {
     super(`${methodName ?? 'method'} must be implemented by subclasses`);
     this.name = 'NotImplementedError';
+    this.methodNmae = methodName;
   }
 }
 
-export class ArgumentError extends Error {
+export class ArgumentError extends BaseError {
   constructor(given, expected) {
     super(`wrong number of arguments given ${given} expected ${expected}`);
     this.name = 'ArgumentError';
+    this.given = given;
+    this.expected = expected;
+  }
+}
+
+export class MethodMissingError extends BaseError {
+  constructor(object, methodName, args) {
+    super(`unknown method ${methodName} for ${object}`);
+    this.name = 'MethodMissingError';
+    this.object = object;
+    this.methodName = methodName;
+    this.arguments = args;
   }
 }
 
@@ -71,48 +88,8 @@ export const Equatable = {
     return this.isIdentical(other);
   },
 
-  isEquivalent(other) {
-    return this.isIdentical(other);
-  },
-
   isNotIdentical(other) { return !this.isIdentical(other) },
   isNotEqual(other) { return !this.isEqual(other) },
-  isNotEquivalent(other) { return !this.isEquivalent(other) },
-};
-
-export const Associative = {
-  fetch(key, ...args) {
-    const value = this.get(index);
-    if (value !== undefined) return value;
-
-    if (args.length === 0) {
-      throw new Error(`missing index ${index}`);
-    }
-
-    return args[0];
-  },
-
-  dig(...keys) {
-    const value = this.fetch(keys[0], Null);
-    if (value.isNull()) return value;
-    if (keys.length === 1) {
-      return value;
-    }
-
-    return value.dig(...keys.drop(1));
-  },
-
-  has(key) {
-    return !!this.get(key);
-  },
-
-  valuesAt(...keys) {
-    const values = [];
-    for (const key of keys) {
-      values.push(this.get(key) ?? Null);
-    }
-    return values;
-  },
 };
 
 export class Mirror {
@@ -224,6 +201,10 @@ export class ClassMirror extends Mirror {
     }
     return this.prototype[method];
   }
+
+  getInstanceMethodNames() {
+
+  }
 }
 
 export const Base = {
@@ -333,7 +314,128 @@ export class BaseObject {
   get mirror() {
     return this[Symbol.for('morphic.mirror')] ??= new Mirror(this);
   }
+
+  respondsTo(methodName) {
+    return this.mirror.respondsTo(methodName);
+  }
+
+  [Symbols.customInspect]() {
+    return this.inspect();
+  }
+
+  inspect() {
+    return this.toString();
+  }
 }
+
+function getTag(value) {
+  if (value == null) return 'Null';
+
+  const type = typeof value;
+  if (type !== 'object') {
+    return capitalize(type);
+  }
+
+  if (value.tag) {
+    return value.tag;
+  }
+
+  if (value.constructor) {
+    return value.constructor.name;
+  }
+
+  return 'Object';
+}
+
+export class GenericFunction extends BaseObject {
+  static init(name = undefined) {
+    const gfn = this.new(name ?? this.name);
+    return new Proxy(gfn.toFunction(), {
+      apply(target, _, args) {
+        return target.apply(null, args);
+      },
+      get(_, property) {
+        return Reflect.get(gfn, property);
+      }
+    });
+  }
+
+  static initClosure(name = undefined) {
+    return (self, ...args) => {
+      return gfn.apply(self, args);
+    }
+  }
+
+  static #ignoredMethods = new Set(['call', 'constructor', 'apply', 'toString', 'toFunction']);
+  static getDispatchMethodNames() {
+    return this
+      .prototype
+      .mirror
+      .getOwnMethodNames()
+      .filter((prop) => !GenericFunction.#ignoredMethods.has(prop));
+  }
+
+  #name;
+  constructor(name) {
+    super();
+    this.#name = name;
+  }
+
+  get name() { return this.#name }
+
+  call(self, ...args) {
+    const tag = getTag(self);
+    const fn = this[tag];
+
+    if (typeof fn !== 'function') {
+      return this.methodMissing(self, tag, ...args);
+    }
+
+    return fn.call(self, ...args);
+  }
+
+  apply(self, args) {
+    return this.call(self, ...args);
+  }
+
+  methodMissing(self, tag, ...args) {
+    throw new MethodMissingError(this, tag, args);
+  }
+
+  toString() {
+    const methods = this.constructor.getDispatchMethodNames();
+    return `#<GenericFunction ${this.name} ${methods.join(', ')}>`;
+  }
+
+  toFunction() {
+    return (self, ...args) => this.apply(self, args);
+  }
+}
+
+export class Display extends GenericFunction {
+  Null() { return '-' }
+
+  String() {
+    const buffer = []
+    for (let i = 0; i < this.length; i++) {
+      buffer.push(`&#${this.charCodeAt(i)};`);
+    }
+    return buffer.join('');
+  }
+
+  Boolean() {
+    return this ? "Yes" : "No";
+  }
+
+  Error() {
+    return `${this.constructor.name}: ${this.message}: ${this.stack}`;
+  }
+
+  methodMissing(self) {
+    return self[Symbols.customInspect]();
+  }
+}
+export const display = Display.init();
 
 export class ValueObject extends BaseObject {
   static {
@@ -355,60 +457,17 @@ export class ValueObject extends BaseObject {
 
 // Core extensions
 Object.prototype.extend(Base, {
-  isNull() { return false },
-
-  inspect() {
+  [Symbols.customInspect]() {
     return `{${Object.entries(this)
-      .map(([name, value]) => `${name}: ${value.inspect()}`)
+      .map(([name, value]) => `${name}: ${inspect(value)}`)
       .join(", ")}}`
   },
-
-  get mirror() {
-    return this[Symbol.for('morphic.mirror')] ??= new Mirror(this);
-  },
 });
-
-Error.prototype.extend({
-  display() {
-    return `${this.constructor.name}: ${this.message}: ${this.stack}`;
-  }
-});
-
-function hashCombine(seed, hash) {
-    // a la boost, a la clojure
-    seed ^= hash + 0x9e3779b9 + (seed << 6) + (seed >> 2)
-    return seed
-}
 
 // TODO: use this technique for extension methods https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object#instance_methods
-Array.prototype.extend(Equatable, Hashable, Inspectable, Associative, {
-  inspect() {
-    return `[${this.map((item) => item.inspect()).join(", ")}]`;
-  },
-
-  isEmpty() {
-    return this.length === 0;
-  },
-
-  toData() {
-    if (this.isEmpty()) {
-      return EMPTY_ARRAY;
-    }
-
-    const copy = this.map((it) => it.toData());
-    return Object.freeze(copy);
-  },
-
-  drop(count) {
-    return this.slice(count, this.length);
-  },
-
-  get(index) {
-    return this.at(index);
-  },
-
-  set(index, value) {
-    this[index] = value;
+Array.prototype.extend(Equatable, Hashable, Inspectable, {
+  [Symbols.customInspect]() {
+    return `[${this.map(inspect).join(", ")}]`;
   },
 
   hashCode() {
@@ -420,153 +479,26 @@ Array.prototype.extend(Equatable, Hashable, Inspectable, Associative, {
 
     return this.hashCode() === other.hashCode();
   },
-
-  toArray() {
-    return this;
-  },
-
-  toMap() {
-    return new Map(this);
-  },
-
-  toSet() {
-    return new Set(this);
-  },
 });
 
-Map.prototype.extend(Equatable, Hashable, Inspectable, Associative, {
-  toData() {
-    if (this.isEmpty()) {
-      return EMPTY_MAP;
-    }
-
-    return Object.freeze(this.transform((value) => value.toData()));
-  },
-
-  isEmpty() {
-    return this.size === 0;
-  },
-
-  map(...args) {
-    return this.entries().map(...args);
-  },
-
-  reduce(...args) {
-    return this.entries().reduce(...args);
-  },
-
-  transform(fn) {
-    const newMap = new Map();
-    for (const [key, value] of this) {
-      newMap.set(key, fn(value, key, this));
-    }
-    return newMap;
-  },
-
-  transformKeys(fn) {
-    const newMap = new Map();
-    for (const [key, value] of this) {
-      newMap.set(fn(key, this), value);
-    }
-    return newMap;
-  },
-
-  merge(other) {
-    const newMap = new Map();
-    for (const [key, value] of this) { newMap.set(key, value) }
-    for (const [key, value] of other) { newMap.set(key, value) }
-    return newMap;
-  },
-
-  pick(...keys) {
-    const newMap = new Map();
-    for (const key of keys) {
-      if (this.has(key)) {
-        newMap.set(key, this.get(key));
-      }
-    }
-    return newMap;
-  },
-
-  except(...keys) {
-    const newMap = new Map();
-    for (const [key, value] of this) {
-      if (!keys.includes(key)) {
-        newMap.set(key, value);
-      }
-    }
-    return newMap;
-  },
-
-  inspect() {
-    const pairs = this.reduce(
+Map.prototype.extend(Equatable, Hashable, Inspectable, {
+  [Symbols.customInspect]() {
+    const pairs = this.entries().reduce(
       (str, [key, value]) =>
         str === null
-          ? `${key.inspect()} => ${value.inspect()}`
-          : `${str}, ${key.inspect()} => ${value.inspect()}`,
+          ? `${inspect(key)} => ${inspect(value)}`
+          : `${str}, ${inspect(key)} => ${inspect(value)}`,
       null
     );
     return `#<${this.constructor.name} ${pairs}>`;
   },
-
-  toArray() {
-    return this.entries().toArray();
-  },
-
-  toMap() {
-    return this;
-  },
 });
 
-Set.prototype.extend(Equatable, Hashable, Inspectable, Associative, {
-  toData() {
-    if (this.isEmpty()) {
-      return EMPTY_SET;
-    }
-
-    return Object.freeze(this.transform((value) => value.toData()));
-  },
-
-  isEmpty() {
-    return this.size === 0;
-  },
-
-  map(fn) {
-    return this.values().map(fn);
-  },
-
-  reduce(fn) {
-    return this.values().reduce(fn);
-  },
-
-  transform(fn) {
-    const newSet = new Set();
-    for (const value of this) {
-      newSet.set(fn(value, this));
-    }
-    return newSet;
-  },
-
-  toArray() {
-    return this.values().toArray();
-  },
-
-  toSet() {
-    return this;
-  },
-
-  toMap() {
-    return new Map(this.entries());
-  },
-});
+Set.prototype.extend(Equatable, Hashable, Inspectable);
 
 globalThis.Date.prototype.extend(Equatable, Hashable, Inspectable, {
   hashCode() {
     return this.valueOf();
-  },
-
-  toData() {
-    return this;
   },
 });
 
@@ -625,82 +557,17 @@ export class Date extends BaseObject {
 RegExp.prototype.extend(Equatable, Hashable, Inspectable);
 Function.prototype.extend(Equatable, Inspectable);
 
-function booleanNumberCompare(boolean, number) {
-  return boolean ? number === 1 : number === 0;
-}
-
 Number.prototype.extend(Equatable, Hashable, Inspectable, {
   hashCode() {
-    return this;
-  },
-
-  toData() {
     return this;
   },
 
   isEqual(other) {
     return this === other;
   },
-
-  isEquivalent(other) {
-    if (this.isEqual(other)) return true;
-
-    if (other == null) {
-      return this === 0;
-    }
-
-    const type = typeof other;
-    switch(type) {
-      case 'string':
-        return this.toString() === other;
-      case 'boolean':
-        return booleanNumberCompare(other, this);
-    }
-
-    return false;
-  },
-
-  succ() {
-    return this.plus(1);
-  },
-
-  pred() {
-    return this.minus(2);
-  },
-
-  plus(other) {
-    return this + other;
-  },
-
-  minus(other) {
-    return this - other;
-  },
-
-  div(other) {
-    return this / other;
-  },
-
-  mult(other) {
-    return this * other;
-  },
 });
 
-function booleanStringCompare(boolean, string) {
-  const lower = string.toLowerCase()
-  return boolean
-    ? lower === 'yes' || lower === '1' || lower === 'true'
-    : lower === 'no' || lower === '0' || lower === 'false';
-}
-
 Boolean.prototype.extend(Equatable, Hashable, Inspectable, {
-  display() {
-    return this ? "Yes" : "No";
-  },
-
-  toData() {
-    return this;
-  },
-
   hashCode() {
     return this ? 1 : 0;
   },
@@ -708,43 +575,10 @@ Boolean.prototype.extend(Equatable, Hashable, Inspectable, {
   isEqual(other) {
     return this === other;
   },
-
-  isEquivalent(other) {
-    if (this.isEqual(other)) return true;
-
-    if (other == null) {
-      return this ? false : true;
-    }
-
-    const type = typeof other;
-    switch(type) {
-      case 'number':
-        return booleanNumberCompare(this, other);
-      case 'string':
-        return booleanStringCompare(this, other);
-    }
-
-    return false;
-  }
 });
 
-// A basic string hash
-function stringHash(str) {
-  let code = 0;
-  for (let i = 0; i < str.length; i++) {
-    for (let j = str.length; j > 0; j--) {
-      code += Math.pow(str.charCodeAt(i), j)
-    }
-  }
-  return code;
-}
-
 String.prototype.extend(Equatable, Hashable, Inspectable, {
-  display() {
-    return this;
-  },
-
-  inspect() {
+  [Symbol.customInspect]() {
     return `"${this}"`;
   },
 
@@ -752,115 +586,12 @@ String.prototype.extend(Equatable, Hashable, Inspectable, {
     return stringHash(this);
   },
 
-  toData() {
-    return this;
-  },
-
   isEqual(other) {
     if (typeof other !== 'string') return false;
 
     return this === other;
   },
-
-  isEquivalent(other) {
-    if (this === `${other}`) return true;
-
-    if (typeof other === 'boolean') {
-      return booleanStringCompare(other, this);
-    }
-
-    return false;
-  },
-
-  codePoints() {
-    const array = []
-    for (let i = 0; i < this.length; i++) {
-      array.push(this.codePointAt(i));
-    }
-    return array;
-  },
-
-  charCodes() {
-    const array = []
-    for (let i = 0; i < this.length; i++) {
-      array.push(this.charCodeAt(i));
-    }
-    return array;
-  },
-
-  toHTML() {
-    const buffer = []
-    for (let i = 0; i < this.length; i++) {
-      buffer.push(`&#${this.charCodeAt(i)};`);
-    }
-    return buffer.join('');
-  },
-
-  succ() {
-    const points = this.codePoints();
-    points[points.length - 1] += 1;
-    return this.constructor.fromCodePointArray(points);
-  },
-
-  pred() {
-    const points = this.codePoints();
-    points[points.length - 1] -= 1;
-    return this.constructor.fromCodePointArray(points);
-  },
 });
-
-String.fromCodePointArray = function(array) {
-  return array.map((point) => this.fromCodePoint(point)).join('');
-};
-
-export class Range extends BaseObject {
-  #begin;
-  #end;
-  #excludeEnd;
-  constructor(begin, end, excludeEnd = false) {
-    super();
-    this.#begin = begin;
-    this.#end = end;
-    this.#excludeEnd = excludeEnd;
-  }
-
-  get begin() { return this.#begin }
-  get end() { return this.#end }
-  get excludeEnd() { return this.#excludeEnd }
-
-  forEach(fn) {
-    let x = this.begin;
-    while (!x.isEqual(this.end)) {
-      fn(x);
-      x = x.succ();
-    }
-    if (!this.#excludeEnd) {
-      fn(x);
-    }
-  }
-
-  map(fn) {
-    const array = [];
-    this.forEach((it) => { array.push(fn(it)) });
-    return array;
-  }
-
-  toArray() {
-    const array = [];
-    this.forEach(array.push.bind(array));
-    return array;
-  }
-
-  reverse() {
-    const array = [];
-    this.forEach(array.unshift.bind(array));
-    return array;
-  }
-
-  toString() {
-    return `${this.begin}${this.#excludeEnd ? '...' : '..'}${this.end}`;
-  }
-}
 
 // A default Null object
 function NullBase(value){
@@ -876,7 +607,10 @@ NullBase.extend(Base, {
   toString() { return 'Null' },
   valueOf() { return undefined },
   isNull() { return true },
-  toData() { return EMPTY_MAP },
+  isEmpty() { return true },
+  toMap() { return EMPTY_MAP },
+  toArray() { return EMPTY_ARRAY },
+  toSet() { return EMPTY_SET },
 });
 
 export const Null = new Proxy(NullBase, {
@@ -891,11 +625,4 @@ export const Null = new Proxy(NullBase, {
     return true;
   },
 });
-
-// object coercion
-export function objectOf(value) {
-  if (value == null) return Null;
-
-  return Object(value);
-}
 

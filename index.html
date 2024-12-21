@@ -1,5 +1,5 @@
 <!doctype html>
-<html class="no-js" lang="">
+<html lang="en">
     <head>
         <meta charset="utf-8">
         <meta http-equiv="x-ua-compatible" content="ie=edge">
@@ -11,51 +11,50 @@
 
         <script type="module">
          import * as Morphic from './morphic.mjs';
-         const { tag } = Morphic;
+         const { tag, display } = Morphic;
 
          class ObjectMorph extends Morphic.AtomicMorph {
-             #element;
+             #table;
              constructor(parent, value) {
                  super(parent, value);
              }
 
-             initialize() {
-                 const html = Morphic.HTMLMorphBuilder.new(this);
-                 const table = html.tag('table', { class: 'table table-sm table-striped' }).tag('tbody');
+             get children() { return [] }
 
+             initialize() {
+                 this.#table = this.parent.tag('table', { class: 'table table-sm table-striped' }).tag('tbody');
+             }
+
+             drawSelf() {
                  Object.entries(this.value).forEach(([key, value]) => {
-                    const row = table.tag('tr');
-                    row.tag('th').text(key.display());
-                    row.tag('td').text()
+                    const row = this.#table.tag('tr');
+                     // row.tag('th').text(display(key));
+                     // row.tag('td').text(display(value));
                  });
              }
          }
 
-         const body = Morphic.HTMLDocumentBodyMorph.new();
-         body.tag('nav', { class: 'navbar navbar-light bg-light' })
-             .tag('div', { class: 'container-fluid' })
-             .tag('span', { class: 'navbar-brand mb-0 h1' }, "Morphic!");
+         Morphic.HTMLDocumentBodyMorph.new().draw((body) => {
+             body.tag('nav', { class: 'navbar navbar-light bg-light mb-2' })
+                 .tag('div', { class: 'container-fluid' })
+                 .tag('span', { class: 'navbar-brand mb-0 h1' }, "Morphic!");
 
-         const panes = body.tag('div', { class: 'row align-items-stretch', style: 'min-height: 500px' });
-         const editor = panes.tag('pre', { id: 'code-editor', class: 'col-md-6 border rounded m-0', contenteditable: true, spellcheck: false });
-         const result = panes.tag('pre', { id: 'code-result', class: 'col-md-6', style: 'white-space: pre-wrap' }).observe(editor);
+             const panes = body.tag('div', { class: 'container-fluid row align-items-stretch', style: 'min-height: 500px' });
+             const editor = panes.tag('pre', { id: 'code-editor', class: 'col-md-6 border rounded m-0', contenteditable: true, spellcheck: false });
+             const result = panes.tag('pre', { id: 'code-result', class: 'col-md-6', style: 'white-space: pre-wrap' }).observe(editor);
 
-         result.update = function (editor) {
-             try {
-                 this.updateContent(Morphic.objectOf(eval(editor.element.innerText)));
-             } catch (error) {
-                 console.error(error);
-                 this.updateContent(error);
-             }
-         };
+             result.update = function (editor) {
+                 try {
+                     this.updateContent(Morphic.objectOf(eval(editor.element.innerText)));
+                 } catch (error) {
+                     console.error(error);
+                     this.updateContent(error);
+                 }
+             };
 
-         body.draw();
+             body.add(ObjectMorph.build([1, 2, 3]));
+         });
         </script>
-        <body>
-            <!-- <div class="row align-items-stretch" style="min-height: 500px">
-                 <pre id="code-editor" class="col-md-6 border rounded m-0" contenteditable="true" spellcheck="false"></pre>
-                 <pre id="code-result" class="col-md-6" style="white-space: pre-wrap;"></pre>
-                 </div> -->
-        </body>
+        <body></body>
     </head>
 </html>

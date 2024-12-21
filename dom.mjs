@@ -1,5 +1,6 @@
-import { EMPTY_ARRAY, BaseObject, objectOf } from './base.mjs';
+import { EMPTY_ARRAY, display, BaseObject } from './base.mjs';
 import { AtomicMorph, NullMorph, Morph } from './core.mjs';
+import { drop, inspect, objectOf } from './utils.mjs';
 
 export class TextNodeMorph extends AtomicMorph {
   #node;
@@ -98,7 +99,7 @@ export class HTMLAttributeMorph extends Morph {
   }
 
   inspect() {
-    return `${this.name}=${this.value.inspect()}`
+    return `${this.name}=${inspect(this.value)}`
   }
 
   toString() {
@@ -137,7 +138,7 @@ export class HTMLAttributeListMorph extends Morph {
   drawSelf() { }
 
   inspect() {
-    return Object.values(this.#attributes).map((it) => it.inspect()).join(' ');
+    return Object.values(this.#attributes).map(inspect).join(' ');
   }
 
   toString() {
@@ -149,7 +150,7 @@ export class HTMLElementMorph extends Morph {
   static tag(name, ...args) {
     const firstAttrs = !(args[0] instanceof Morph);
     const attributes = firstAttrs ? args[0] : {};
-    const children = (firstAttrs ? args.drop(1) : args).map((child) => child instanceof Morph ? child : TextNodeMorph.build(child.display()));
+    const children = (firstAttrs ? drop(args, 1) : args).map((child) => child instanceof Morph ? child : TextNodeMorph.build(`${child}`));
 
     return this.build(name, attributes).add(...children);
   }
@@ -181,7 +182,7 @@ export class HTMLElementMorph extends Morph {
   get events() { return Object.keys(this.#eventObservers) }
 
   toString() {
-    return `#<${this.constructor.name}:0x${this.hexId} ${this.tagName} ${this.attributes.inspect()} ${this.children.inspect()}>`;
+    return `#<${this.constructor.name}:0x${this.hexId} ${this.tagName} ${inspect(this.attributes)} ${inspect(this.children)}>`;
   }
 
   observeEvent(event, ...observers) {
@@ -271,7 +272,7 @@ export class HTMLElementMorph extends Morph {
     if (content instanceof HTMLElementMorph) {
       this.replaceChildren(content);
     } else {
-      this.element.innerHTML = content.display().toHTML();
+      this.element.innerHTML = display(content);
     }
     this.notifyObservers();
   }
