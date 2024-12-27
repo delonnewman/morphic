@@ -33,3 +33,20 @@ export class ScriptTest extends Morphic.TestCase {
     this.assertEquals(4, result, 'extentions dispatch messages to compatible objects');
   }
 }
+
+export class MessageTest extends Morphic.TestCase {
+  testVariablyParams() {
+    const object = {};
+    const sum = VariablyParameterizedMessage.new('sum');
+
+    object[sum.hashCode()] = function(...xs) {
+      return JavaScript.sum(...xs);
+    };
+
+    const script = Script.build();
+    script.send(Dispatch.new(object, ParameterizedMessage.new('sum', 3, 4)));
+    const result = script.run();
+
+    this.assertEquals(7, result, 'variably parameterized methods can be dispatched by parameterized messages');
+  }
+}
