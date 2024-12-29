@@ -27,9 +27,26 @@ class TrueClass
 end
 
 class Numeric
+  # need a way to specify operator precedence (a general purpose meta data system would be ideal)
+  ^{ precedence: 1 }
+  def binary:-(other)
+    Math.sum(self, Math.negate(other))
+  end
+
   # binary method
+  ^{ precedence: 1 }
   def binary:+(other)
     Math.sum(self, other)
+  end
+
+  ^{ precedence: 0 }
+  def binary:*(other)
+    Math.product(self, other)
+  end
+
+  ^{ precedence: 0 }
+  def binary:/(other)
+    Math.product(self, Math.inverse(other))
   end
 
   # postfix method
