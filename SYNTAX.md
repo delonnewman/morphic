@@ -1,3 +1,77 @@
+# Data
+
+## Numbers
+
+```ruby
+1 # integer
+1.3 # float?
+1.3r # rational
+1/4 # rational
+1_000_000
+10e-7
+10E-5
+10e3
+10E4
+```
+
+## Strings
+
+```ruby
+'Literal'
+"#{variable} interpolated"
+```
+
+## Characters
+
+```ruby
+?a # ASCII "a"
+?\t # tab
+?\n # newline
+?tab
+?newline
+?uFFFF # unicode
+```
+
+## Keywords
+
+```ruby
+:keyword
+```
+
+## Collections
+
+### Lists
+
+```perl
+(1, 2, 3, 4)
+```
+
+### Vectors
+
+```ruby
+[1, 2, 3, 4]
+```
+
+### Maps
+
+```ruby
+{ "a" => 1, "b" => 2 }
+{ :a => 1, :b => 2 }
+{ a: 1, b: 2 }
+```
+
+### Pairs
+
+```ruby
+:a => 1
+```
+
+### Sets
+
+```ruby
+{ 1, 2, 3, 4 }
+```
+
 # Message Dispatch
 
 ```ruby
@@ -56,10 +130,11 @@ class Numeric
 end
 ```
 
-# Object Declaration
+# Singleton Object Declaration
 
 ```ruby
-object Math
+module Math
+  # The equivalent of "def self.max(a, b)" in Ruby
   def max(a, b)
     return a if a > b
     b
@@ -67,3 +142,49 @@ object Math
 end
 ```
 
+# Quoting
+
+## Symbols
+
+```ruby
+`Person`
+```
+
+## Messages
+
+```ruby
+send(`Math`, `max(1, 2)`) # => 2
+send([1, 2, 3], `at: 0`) # => 1
+```
+
+# Scope, Definitions & Assignment
+
+```ruby
+$root_url = JavaScript.window.url # global dynamically scoped variable
+```
+
+```ruby
+MAX_COUNT = 100 # like Ruby a global constant
+```
+
+```ruby
+class Person
+  # self is the class definition body (evaluated when it is defined)
+  # use meta data to specifiy slot options
+  ^{ init_args: :keyword, access: :readonly } @name # define_slot(`@name`).set_meta({ init_args: :keyword, access: :readonly })
+  ^{ init_args: :keyword, access: :readonly } @dob # define_slot(`@name`).set_meta({ init_args: :keyword, access: :readonly })
+
+  def age
+    # self is the method body script object (evaluated when it is called)
+    today = Date.today # set: `today`, to: Date.today
+    year  = today.year - @dob.year # set: `year`, to: get(`today`) - slot(`@dob`).value
+
+    # return is a script method
+    return year - 1 if today.month < @dob.month # (get(`today`).month < slot(`@dob`).value.month).if_true: { return(get(`year`) - 1  }
+    return year     if today.month > @dob.month # (get(`today`).month > slot(`@dob`).value.month).if_true: { return(get(`year`)) }
+    return year - 1 if today.day < @dob.day # (get(`today`).day < slot(`@dob`).value.day).if_true: { return(get(`year`) - 1) }
+
+    year # return(get(`year`))
+  end
+end
+```
