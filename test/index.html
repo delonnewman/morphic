@@ -13,6 +13,13 @@
          import * as Morphic from '../lib/morphic.mjs';
          import * as Tests from './tests.mjs';
 
+         function stats(container, tests, classes) {
+             const stats = container.tag('div', { class: [...classes, 'test-stats'] })
+             stats.tag('span', { class: 'text-success' }, `(${tests.filter((t) => t.passed).length}) passed `);
+             stats.tag('span', { class: 'text-danger' }, `(${tests.filter((t) => t.passed === false).length}) failed `);
+             stats.tag('span', { class: 'text-warning' }, `(${tests.filter((t) => t.passed === null).length}) errored`);
+         }
+
          const tests = Object.values(Tests).map((testClass) => new testClass());
          tests.forEach((test) => { test.prove() });
 
@@ -22,25 +29,18 @@
              .tag('span', { class: 'navbar-brand mb-0 h1' }, "Morphic!");
 
          const main = body.tag('div', { class: 'container-fluid' });
-
-         const stats = main.tag('div', { class: 'test-stats my-2' })
-         stats.tag('span', { class: 'text-success' }, `(${tests.filter((t) => t.passed).length}) passed `);
-         stats.tag('span', { class: 'text-danger' }, `(${tests.filter((t) => t.passed === false).length}) failed `);
-         stats.tag('span', { class: 'text-warning' }, `(${tests.filter((t) => t.passed === null).length}) errored`);
+         stats(main, tests, ['my-2']);
 
          const accordion = main.tag('div', { class: 'accordion', id: 'morpic-test-suite' });
          tests.forEach((test) => {
              const item = accordion.tag('div', { class: ['accordion-item', test.bgColor] });
-             item.tag('h2', { class: 'accordion-header' })
-                 .tag('button', { class: 'accordion-button collapsed', type: 'button', 'data-bs-toggle': 'collapse', 'data-bs-target': `#${test.id}`, 'aria-expanded': false }, test.name);
+             const button = item.tag('h2', { class: 'accordion-header' })
+                 .tag('button', { class: 'accordion-button collapsed', type: 'button', 'data-bs-toggle': 'collapse', 'data-bs-target': `#${test.id}`, 'aria-expanded': false });
+             button.tag('div', { class: [] }).withText(test.name);
+             stats(button, test.assertions, []);
 
              const content = item.tag('div', { id: test.id, class: 'accodion-collapse collapse', 'data-bs-parent': `#morphic-test-suite` })
                  .tag('div', { class: ['accordion-body', 'bg-white'] });
-
-             const stats = content.tag('div', { class: 'my-2' })
-             stats.tag('span', { class: 'text-success' }, `(${test.assertions.filter((t) => t.passed).length}) passed `);
-             stats.tag('span', { class: 'text-danger' }, `(${test.assertions.filter((t) => t.passed === false).length}) failed `);
-             stats.tag('span', { class: 'text-warning' }, `(${test.assertions.filter((t) => t.passed === null).length}) errored`);
 
              const list = content.tag('ul', { class: 'list-group' });
              test.assertions.forEach((assertion) => {
