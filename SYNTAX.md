@@ -50,8 +50,8 @@
 ### Ranges
 
 ```ruby
-(1..10)
-(1...10)
+1..10
+1...10
 ```
 
 ### Lists
@@ -69,9 +69,9 @@
 ### Maps
 
 ```ruby
-{ "a" => 1, "b" => 2 }
-{ :a => 1, :b => 2 }
-{ a: 1, b: 2 }
+{"a" => 1, "b" => 2}
+{:a => 1, :b => 2}
+{a: 1, b: 2}
 ```
 
 ### Pairs
@@ -83,20 +83,12 @@
 ### Sets
 
 ```ruby
-{ 1, 2, 3, 4 }
+{1, 2, 3, 4}
 ```
 
 # Sigils
 
 Programmable quote syntax
-
-## Mutable Collections
-
-```ruby
-%![1, 2, 3] # a dynamic array
-%!{ a: 1, b: 2 } # a hash (mutable map)
-%!{1, 2, 3} # a hash set (mutable set)
-```
 
 ## Strings
 
@@ -109,10 +101,10 @@ Programmable quote syntax
 %W{a set of interpolated\ words} # ["a", "set", "of", "interpolated words"]
 ```
 
-## Regex
+## Regexp
 
 ```ruby
-%r"\w+_test.zera"i # Regex.String('\w+_test.zera', 'i')
+%r"\w+_test.zera"i # Regexp.String('\w+_test.zera', 'i')
 ```
 
 ## Keywords
