@@ -167,6 +167,14 @@ Math.max(1, 2) # parameterized message
 Math.sum(1, 2, 3) # variably parameterized message
 ```
 
+## Compile Time Dispatch
+
+```ruby
+# call method before evaluation i.e. it gets syntax objects as arguments
+^doc
+self.^doc 
+```
+
 ## Method Declaration
 
 ```ruby
@@ -195,7 +203,9 @@ class Numeric
   # Precedence specified with reader elsewhere
   # Reader.register_operator(`+ other`, { precedence: 1 })
   #
-  # var = define_instance_method(`+ other`) do
+  # "self" is the class body (a script object)
+  # so this is not the same thing as Numeric.define
+  # var = define(`+ other`) do
   #   Math.sum(self, other)
   # end
   #
@@ -225,7 +235,7 @@ end
 
 ## Quoting
 
-Symbols without an invocant must be quoted
+Symbolic objects without an invocant must be quoted
 
 ### Simple Message
 
