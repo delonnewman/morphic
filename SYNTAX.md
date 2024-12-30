@@ -7,6 +7,7 @@
 1.3 # float?
 1.3r # rational
 1/4 # rational
+1.3i # complex
 1_000_000
 10e-7
 10E-5
@@ -38,7 +39,20 @@
 :keyword
 ```
 
+## Regexp Literals
+
+```ruby
+/test/
+```
+
 ## Collections
+
+### Ranges
+
+```ruby
+(1..10)
+(1...10)
+```
 
 ### Lists
 
@@ -70,6 +84,79 @@
 
 ```ruby
 { 1, 2, 3, 4 }
+```
+
+# Sigils
+
+Programmable quote syntax
+
+## Mutable Collections
+
+```ruby
+%![1, 2, 3] # a dynamic array
+%!{ a: 1, b: 2 } # a hash (mutable map)
+%!{1, 2, 3} # a hash set (mutable set)
+```
+
+## Strings
+
+```ruby
+%w(a list of words) # ("a", "list", "of", "words")
+%w[a vector of words] # ["a", "vector", "of", "words"]
+%w{a set of words} # ["a", "set", "of", "words"]
+%W(a list of interpolated\ words) # ("a", "list", "of", "interpolated words")
+%W[a vector of interpolated\ words] # ["a", "vector", "of", "interpolated words"]
+%W{a set of interpolated\ words} # ["a", "set", "of", "interpolated words"]
+```
+
+## Regex
+
+```ruby
+%r"\w+_test.zera"i # Regex.String('\w+_test.zera', 'i')
+```
+
+## Keywords
+
+```ruby
+%k"a keyword" # => :"a keyword", Keyword.String("a keyword")
+%k(a list of keywords) # (:a, :list, :of, :keywords)
+%k[a vector of keywords] # [:a, :vector, :of, :keywords]
+%k{a set of keywords} # {:a, :set, :of, :keywords}
+```
+
+## Syntax
+
+```ruby
+%s(class Test (def (test x) x))
+```
+
+## Command Objects
+
+```ruby
+%x"echo $PATH" # Command.String('echo $PATH')
+%x(echo $PATH) # Command.List(('echo', '$PATH'))
+%x[echo $PATH] # Command.Vector(['echo', '$PATH'])
+```
+
+# Callables
+
+## Blocks
+
+```ruby
+(1..100).each do |i| 
+  puts i
+end
+
+(1..100).map { it * 2 }
+(1..100).reduce(0) { _1 + _2 }
+(1..100).reduce(0, &:+)
+```
+
+## Lambdas
+
+```ruby
+-> { puts "hey!" }
+->(x) { x }
 ```
 
 # Message Dispatch
@@ -153,7 +240,7 @@ end
 ## Messages
 
 ```ruby
-send(`Math`, `max(1, 2)`) # => 2
+send(get(`Math`), `max(1, 2)`) # => 2
 send([1, 2, 3], `at: 0`) # => 1
 ```
 
@@ -161,10 +248,12 @@ send([1, 2, 3], `at: 0`) # => 1
 
 ```ruby
 $root_url = JavaScript.window.url # global dynamically scoped variable
+# self.define_global(`$root_url`, JavaScript.window.url, { dynamic: true });
 ```
 
 ```ruby
 MAX_COUNT = 100 # like Ruby a global constant
+# self.define_global(`MAX_COUNT`, 100)
 ```
 
 ```ruby
