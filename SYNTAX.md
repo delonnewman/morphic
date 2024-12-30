@@ -180,27 +180,29 @@ class TrueClass
 end
 
 class Numeric
-  # need a way to specify operator precedence (a general purpose meta data system would be ideal)
-  ^{ precedence: 1 }
-  def binary:-(other)
-    Math.sum(self, Math.negate(other))
-  end
+  class_doc %q(
+    A long doc string, a long doc string, a long doc string
+    A long doc string, a long doc string, a long doc string
+    A long doc string, a long doc string, a long doc string
+  )
 
-  # binary method
-  ^{ precedence: 1 }
+  doc "Return the sum of this value and the other"
   def binary:+(other)
     Math.sum(self, other)
   end
-
-  ^{ precedence: 0 }
-  def binary:*(other)
-    Math.product(self, other)
-  end
-
-  ^{ precedence: 0 }
-  def binary:/(other)
-    Math.product(self, Math.inverse(other))
-  end
+  # Message.binary("+", Symbol.intern("other")) == `+ other`
+  #
+  # Precedence specified with reader elsewhere
+  # Reader.register_operator(`+ other`, { precedence: 1 })
+  #
+  # var = define_instance_method(`+ other`) do
+  #   Math.sum(self, other)
+  # end
+  #
+  # Defined elsewhere
+  # def doc(str)
+  #   next_var.set_meta(next_var.meta.assoc(:doc, str))
+  # end
 
   # postfix method
   def feet
@@ -250,20 +252,23 @@ send([1, 2, 3], `at: 0`) # => 1
 
 ```ruby
 $root_url = JavaScript.window.url # global dynamically scoped variable
-# self.define_global(`$root_url`, JavaScript.window.url, { dynamic: true });
+# self.set_global(`$root_url`, JavaScript.window.url, { dynamic: true });
 ```
 
 ```ruby
 MAX_COUNT = 100 # like Ruby a global constant
-# self.define_global(`MAX_COUNT`, 100)
+# self.set_global(`MAX_COUNT`, 100)
 ```
 
 ```ruby
 class Person
   # self is the class definition body (evaluated when it is defined)
   # use meta data to specifiy slot options
-  ^{ init_args: :keyword, access: :readonly } @name # define_slot(`@name`).set_meta({ init_args: :keyword, access: :readonly })
-  ^{ init_args: :keyword, access: :readonly } @dob # define_slot(`@name`).set_meta({ init_args: :keyword, access: :readonly })
+  has :name, init: :keyword, access: :readonly
+  # define_slot(`@name`).set_meta({ init: :keyword, access: :readonly })
+
+  has :dob, init: :keyword, access: :readonly
+  # define_slot(`@dob`).set_meta({ init: :keyword, access: :readonly })
 
   def age
     # self is the method body script object (evaluated when it is called)
