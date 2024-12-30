@@ -1,4 +1,4 @@
-# Data
+# Syntax
 
 ## Numbers
 
@@ -86,11 +86,11 @@
 {1, 2, 3, 4}
 ```
 
-# Sigils
+## Sigils
 
 Programmable quote syntax
 
-## Strings
+### Strings & String Collections
 
 ```ruby
 %w(a list of words) # ("a", "list", "of", "words")
@@ -101,13 +101,13 @@ Programmable quote syntax
 %W{a set of interpolated\ words} # ["a", "set", "of", "interpolated words"]
 ```
 
-## Regexp
+### Regexp
 
 ```ruby
 %r"\w+_test.zera"i # Regexp.String('\w+_test.zera', 'i')
 ```
 
-## Keywords
+### Keywords
 
 ```ruby
 %k"a keyword" # => :"a keyword", Keyword.String("a keyword")
@@ -116,13 +116,13 @@ Programmable quote syntax
 %k{a set of keywords} # {:a, :set, :of, :keywords}
 ```
 
-## Syntax
+### Syntax
 
 ```ruby
 %s(class Test (def (test x) x))
 ```
 
-## Command Objects
+### Command Objects
 
 ```ruby
 %x"echo $PATH" # Command.String('echo $PATH')
@@ -130,9 +130,9 @@ Programmable quote syntax
 %x[echo $PATH] # Command.Vector(['echo', '$PATH'])
 ```
 
-# Callables
+## Callables
 
-## Blocks
+### Blocks
 
 ```ruby
 (1..100).each do |i| 
@@ -144,14 +144,14 @@ end
 (1..100).reduce(0, &:+)
 ```
 
-## Lambdas
+### Lambdas
 
 ```ruby
 -> { puts "hey!" }
 ->(x) { x }
 ```
 
-# Message Dispatch
+## Message Dispatch
 
 ```ruby
 a + b # binary message
@@ -167,7 +167,7 @@ Math.max(1, 2) # parameterized message
 Math.sum(1, 2, 3) # variably parameterized message
 ```
 
-# Method Declaration
+## Method Declaration
 
 ```ruby
 # these are new message types for the method declaration object
@@ -209,7 +209,7 @@ class Numeric
 end
 ```
 
-# Singleton Object Declaration
+## Singleton Object Declaration
 
 ```ruby
 module Math
@@ -221,22 +221,32 @@ module Math
 end
 ```
 
-# Quoting
+## Quoting
 
-## Symbols
+Symbols without an invocant must be quoted
+
+### Simple Message
 
 ```ruby
-`Person`
+`Person` # Symbol.intern("Person")
 ```
 
 ## Messages
 
 ```ruby
-send(get(`Math`), `max(1, 2)`) # => 2
+send(Math, `max(1, 2)`) # => 2
 send([1, 2, 3], `at: 0`) # => 1
 ```
 
-# Scope, Definitions & Assignment
+```ruby
+`max(1, 2)` # Message.param("max", 1, 2)
+```
+
+```ruby
+`at: 0` # Message.keyword({ at: 0 })
+```
+
+## Scope, Definitions & Assignment
 
 ```ruby
 $root_url = JavaScript.window.url # global dynamically scoped variable
