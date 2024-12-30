@@ -237,13 +237,13 @@ end
 
 Symbolic objects without an invocant must be quoted
 
-### Simple Message
+### Symbols
 
 ```ruby
 `Person` # Symbol.intern("Person")
 ```
 
-## Messages
+### Messages
 
 ```ruby
 send(Math, `max(1, 2)`) # => 2
