@@ -49,8 +49,4 @@ export class MessageTest extends Morphic.TestCase {
 
     this.assertEquals(7, result, 'variably parameterized methods can be dispatched by parameterized messages');
   }
-
-  testError() {
-    this.fail('this test is expected to fail');
-  }
 }
