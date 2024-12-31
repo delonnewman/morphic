@@ -33,10 +33,18 @@
 ?uFFFF # unicode
 ```
 
+## Symbols
+
+```ruby
+symbol
+Namespaced::symbol
+```
+
 ## Keywords
 
 ```ruby
 :keyword
+:Namespaced::keyword
 ```
 
 ## Regexp Literals
@@ -132,7 +140,7 @@ Programmable quote syntax
 
 ## Callables
 
-### Blocks
+### Runtime Blocks
 
 ```ruby
 (1..100).each do |i| 
@@ -143,6 +151,8 @@ end
 (1..100).reduce(0) { _1 + _2 }
 (1..100).reduce(0, &:+)
 ```
+
+### Syntax Blocks
 
 ### Lambdas
 
@@ -175,8 +185,8 @@ Math.sum(1, 2, 3) # variably parameterized message
 self.^doc
 
 def ^if: predicate, then: consequent, else: alternate
-  predicate.if_true: { return consequent.call }
-  predicate.if_false: { return alternate.call }
+  predicate.if_truthy { return consequent.call }
+  predicate.if_falsy { return alternate.call }
 end
 
 if true then
@@ -186,8 +196,8 @@ else
 end
 
 def ^if: predicate, consequent, else: alternate
-  predicate.if_true: { return consequent.call }
-  predicate.if_false: { return alternate.call }
+  predicate.if_truthy { return consequent.call }
+  predicate.if_falsy { return alternate.call }
 end
 
 if true
