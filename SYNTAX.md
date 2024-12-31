@@ -147,7 +147,7 @@ end
 ### Lambdas
 
 ```ruby
--> { puts "hey!" }
+->{ puts "hey!" }
 ->(x) { x }
 ```
 
@@ -160,7 +160,7 @@ a + b # binary message
 
 [1, 2, 3].at: 0 # keyword message
 
-true.if: { puts "Yes" } else: { puts "No" } # keyword message
+true.if_true: { puts "Yes" }.if_false: { puts "No" } # keyword message
 
 Math.max(1, 2) # parameterized message
 
@@ -172,7 +172,29 @@ Math.sum(1, 2, 3) # variably parameterized message
 ```ruby
 # call method before evaluation i.e. it gets syntax objects as arguments
 ^doc
-self.^doc 
+self.^doc
+
+def ^if: predicate, then: consequent, else: alternate
+  predicate.if_true: { return consequent.call }
+  predicate.if_false: { return alternate.call }
+end
+
+if true then
+  puts "Yes"
+else
+  puts "No"
+end
+
+def ^if: predicate, consequent, else: alternate
+  predicate.if_true: { return consequent.call }
+  predicate.if_false: { return alternate.call }
+end
+
+if true
+  puts "Yes"
+else
+  puts "No"
+end
 ```
 
 ## Method Declaration
