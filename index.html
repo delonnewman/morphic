@@ -35,9 +35,13 @@
          }
 
          Morphic.HTMLDocumentBodyMorph.new().draw((body) => {
-             body.tag('nav', { class: 'navbar navbar-light bg-light mb-2' })
-                 .tag('div', { class: 'container-fluid' })
-                 .tag('span', { class: 'navbar-brand mb-0 h1' }, "Morphic!");
+             const nav = body.tag('nav', { class: 'navbar navbar-light bg-light mb-2' })
+                             .tag('div', { class: 'container-fluid' });
+
+             nav.tag('a', { class: 'navbar-brand mb-0 h1', href: '/' }, "Morphic!");
+             nav.tag('ul', { class: 'navbar-nav me-auto' })
+                .tag('li', { class: 'nav-item' })
+                .tag('a', { class: 'nav-link', href: '/test' }, 'Test Suite');
 
              const panes = body.tag('div', { class: 'container-fluid row align-items-stretch', style: 'min-height: 500px' });
              const editor = panes.tag('pre', { id: 'code-editor', class: 'col-md-6 border rounded m-0', contenteditable: true, spellcheck: false });

@@ -26,7 +26,7 @@
          const body = Morphic.HTMLDocumentBodyMorph.new();
          body.tag('nav', { class: 'navbar navbar-light bg-light mb-2' })
              .tag('div', { class: 'container-fluid' })
-             .tag('span', { class: 'navbar-brand mb-0 h1' }, "Morphic!");
+             .tag('a', { class: 'navbar-brand mb-0 h1', href: '/' }, "Morphic!");
 
          const main = body.tag('div', { class: 'container-fluid' });
          stats(main, tests, ['my-2']);
