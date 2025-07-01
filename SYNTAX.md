@@ -339,6 +339,8 @@ class Person
   has :dob, init: :keyword, access: :readonly
   # define_slot(`@dob`).set_meta({ init: :keyword, access: :readonly })
 
+  # if a method returns a value a "TransactionalMethod" is created otherwise methods are asynchronous coroutines
+  
   # define_transactional_method(`age`) do |script|
   #   script.set: `today`, to: Date.today
   #   script.set: `year`, to: get(`today`) - slot(`@dob`).value
@@ -346,7 +348,6 @@ class Person
   #   script.return((get(`today`).month < slot(`@dob`).value.month).if_true { return(get(`year`) - 1  })
   #   script.return((get(`today`).month > slot(`@dob`).value.month).if_true { return(get(`year`)) })
   #   script.return((get(`today`).day < slot(`@dob`).value.day).if_true { return(get(`year`) - 1) })
-  #
   #   script.return(get(`year`))
   # end
   def age
@@ -356,8 +357,14 @@ class Person
     return year - 1 if today.month < @dob.month
     return year     if today.month > @dob.month
     return year - 1 if today.day < @dob.day
+    return year # explicit return is required (this could be optional in this case since return is used elsewhere).
+  end
 
-    year
+  # define_asynchronous_method(`greet`) do |script|
+  #   ...
+  # end
+  def greet
+    JavaScript.console.log("Hi #{name}")
   end
 end
 ```
