@@ -372,7 +372,7 @@ class Array
   def each
     i = 0
     while i < size
-      yield(self.at(i))
+      yield(at(i)) # script.yield(at(i))
       i += 1
     end
     self
