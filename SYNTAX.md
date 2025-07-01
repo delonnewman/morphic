@@ -246,7 +246,7 @@ class TrueClass
   end
 end
 
-class Numeric
+class Numeric < Value
   class_doc %q(
     A long doc string, a long doc string, a long doc string
     A long doc string, a long doc string, a long doc string
@@ -273,7 +273,7 @@ class Numeric
   #   next_var.set_meta(next_var.meta.assoc(:doc, str))
   # end
 
-  # postfix method
+  # postfix method (for Value objects define_method is aliasd to define_transactional_method)
   def feet
     Measure.new(self, :feet)
   end
