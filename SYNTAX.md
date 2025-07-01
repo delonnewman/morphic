@@ -189,13 +189,40 @@ def ^if: predicate, then: consequent, else: alternate
   predicate.if_falsy { return alternate.call }
 end
 
-if true then
+if true then do
   puts "Yes"
-else
+end else do
   puts "No"
 end
 
+# or
+  
+if true then {
+  puts "Yes"
+} else {
+  puts "No"
+}
+
 def ^if: predicate, consequent, else: alternate
+  predicate.if_truthy { return consequent.call }
+  predicate.if_falsy { return alternate.call }
+end
+
+if true do
+  puts "Yes"
+end else do
+  puts "No"
+end
+
+# or
+  
+if true {
+  puts "Yes"
+} else {
+  puts "No"
+}
+
+def ^if: predicate, &consequent, else: &alternate
   predicate.if_truthy { return consequent.call }
   predicate.if_falsy { return alternate.call }
 end
