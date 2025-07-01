@@ -312,17 +312,76 @@ class Person
   has :dob, init: :keyword, access: :readonly
   # define_slot(`@dob`).set_meta({ init: :keyword, access: :readonly })
 
+  # define_transactional_method(`age`) do |script|
+  #   script.set: `today`, to: Date.today
+  #   script.set: `year`, to: get(`today`) - slot(`@dob`).value
+  #
+  #   script.return((get(`today`).month < slot(`@dob`).value.month).if_true { return(get(`year`) - 1  })
+  #   script.return((get(`today`).month > slot(`@dob`).value.month).if_true { return(get(`year`)) })
+  #   script.return((get(`today`).day < slot(`@dob`).value.day).if_true { return(get(`year`) - 1) })
+  #
+  #   script.return(get(`year`))
+  # end
   def age
-    # self is the method body script object (evaluated when it is called)
-    today = Date.today # set: `today`, to: Date.today
-    year  = today.year - @dob.year # set: `year`, to: get(`today`) - slot(`@dob`).value
+    today = Date.today
+    year  = today.year - @dob.year
 
-    # return is a script method
-    return year - 1 if today.month < @dob.month # (get(`today`).month < slot(`@dob`).value.month).if_true: { return(get(`year`) - 1  }
-    return year     if today.month > @dob.month # (get(`today`).month > slot(`@dob`).value.month).if_true: { return(get(`year`)) }
-    return year - 1 if today.day < @dob.day # (get(`today`).day < slot(`@dob`).value.day).if_true: { return(get(`year`) - 1) }
+    return year - 1 if today.month < @dob.month
+    return year     if today.month > @dob.month
+    return year - 1 if today.day < @dob.day
 
-    year # return(get(`year`))
+    year
   end
 end
+```
+
+## Blocks
+
+### Abstract
+
+```ruby
+begin # 'do'?
+  retries = 0
+  payload = JavaScript.window.fetch($root_url)
+  JavaScript.console.log(payload)
+  go LogService.log("Payload: #{payload}") # asyncronous call
+rescue Error
+  retry if retries < 10
+  raise
+end
+```
+
+### Async
+
+```ruby
+go begin # 'go do'?
+  retries = 0
+  payload = await JavaScript.window.fetch($root_url)
+  JavaScript.console.log(payload)
+  LogService.log("Payload: #{payload}") # asyncronous call
+rescue Error
+  retry if retries < 10
+  raise
+end
+```
+
+### Programatic
+
+```ruby
+class Array
+  def each
+    i = 0
+    while i < size
+      yield(self.at(i))
+      i += 1
+    end
+    self
+  end
+end
+
+[1, 2, 3].each do |i| 
+  puts i
+end
+
+%w(Hey I see).each { puts it }
 ```
